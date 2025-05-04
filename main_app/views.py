@@ -15,11 +15,20 @@ import json
 from .models import (
     Product, StockTransaction, StockIn, StockOut, Supplier, 
     Category, ActivityLog, LowStockAlert, Order, OrderItem, 
-    Customer, Report, UserProfile
+    Customer, Report, UserProfile, Notification
 )
 
 # Import the render_to_pdf function from utils
 from .utils import render_to_pdf
+
+# Import the notification functions from utils
+from .utils import (
+    create_notification,
+    notify_low_stock,
+    notify_stock_transaction,
+    notify_new_order,
+    notify_supplier_update,
+)
 
 # ===== Dashboard =====
 @login_required
@@ -497,32 +506,33 @@ def suppliers(request):
 @login_required
 @permission_required('main_app.add_supplier')
 def add_supplier(request):
+    """Add a new supplier"""
     if request.method == 'POST':
         name = request.POST.get('name')
-        contact_info = request.POST.get('contact_info')
-        address = request.POST.get('address')
         email = request.POST.get('email')
         phone = request.POST.get('phone')
+        address = request.POST.get('address')
+        contact_person = request.POST.get('contact_person')
         
-        # Create new supplier
+        # Create supplier
         supplier = Supplier.objects.create(
             name=name,
-            contact_info=contact_info,
-            address=address,
             email=email,
-            phone=phone
+            phone=phone,
+            address=address,
+            contact_person=contact_person
         )
+        
+        # Create notification for new supplier
+        notify_supplier_update(supplier, is_new=True, user=request.user)
         
         # Log activity
         ActivityLog.objects.create(
             user=request.user,
-            action=f"Added new supplier: {supplier.name}",
-            date=timezone.now(),
-            content_type='supplier',
-            object_id=supplier.id
+            action=f"Added new supplier: {name}"
         )
         
-        messages.success(request, f"Successfully added new supplier: {supplier.name}")
+        messages.success(request, f"Supplier {name} added successfully!")
         return redirect('suppliers')
     
     return render(request, 'add_supplier.html')
@@ -581,6 +591,13 @@ def stock_transaction(request):
                 date=date,
                 created_by=request.user
             )
+            
+            # Create notification for stock transaction
+            notify_stock_transaction(transaction, request.user)
+            
+            # Check if stock is below reorder level and notify if it is
+            if product.stock <= product.reorder_level:
+                notify_low_stock(product)
             
             # Log activity
             action_text = "Added" if transaction_type == 'IN' else "Removed"
@@ -742,42 +759,52 @@ def order(request):
             # Create order
             order = Order.objects.create(
                 customer=customer,
+                status='pending',
                 notes=notes,
                 created_by=request.user
             )
             
-            # Create order items
-            total_amount = 0
-            
-            for i in range(len(product_ids)):
-                product = Product.objects.get(id=product_ids[i])
-                quantity = int(quantities[i])
-                price = float(prices[i])
-                
-                # Check stock
-                if product.stock < quantity:
-                    messages.warning(request, f"Insufficient stock for {product.name}. Order created but item stock will be negative.")
-                
-                # Create order item
+            # Process order items
+            for item in cart_items:
+                product = Product.objects.get(id=item['product_id'])
                 OrderItem.objects.create(
                     order=order,
                     product=product,
-                    quantity=quantity,
-                    price=price
+                    quantity=item['quantity'],
+                    price=item['price']
                 )
                 
-                total_amount += quantity * price
+                # Create stock transaction for this order item
+                StockTransaction.objects.create(
+                    product=product,
+                    quantity=item['quantity'],
+                    transaction_type='OUT',
+                    reference=f"Order #{order.id}",
+                    notes=f"Order for {customer.name if customer else 'Walk-in Customer'}"
+                )
+                
+                # Update product stock
+                product.stock -= item['quantity']
+                product.save()
+                
+                # Check if product is now low on stock
+                if product.stock <= product.reorder_level:
+                    notify_low_stock(product)
+            
+            # Create notification for new order
+            notify_new_order(order, request.user)
             
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action=f"Created order #{order.id} for {customer.name} worth ${total_amount:.2f}",
-                date=timezone.now(),
-                content_type='order',
-                object_id=order.id
+                action=f"Created new order #{order.id}"
             )
             
-            messages.success(request, f"Successfully created order #{order.id} for {customer.name}")
+            messages.success(request, f"Order #{order.id} created successfully!")
+            
+            # Clear cart
+            request.session['cart'] = []
+            
             return redirect('order_detail', pk=order.id)
             
         except Customer.DoesNotExist:
@@ -1215,6 +1242,78 @@ def users_pdf_report(request):
     
     # If PDF generation failed
     return HttpResponse("Error generating PDF", status=400)
+
+# ===== Notifications =====
+@login_required
+def notifications(request):
+    """View all notifications"""
+    user_notifications = Notification.objects.filter(recipient=request.user)
+    
+    # Mark all as read if requested
+    if request.GET.get('mark_all_read'):
+        user_notifications.update(is_read=True)
+        messages.success(request, "All notifications marked as read.")
+        return redirect('notifications')
+    
+    # Pagination
+    paginator = Paginator(user_notifications, 20)  # Show 20 notifications per page
+    page_number = request.GET.get('page')
+    notifications_page = paginator.get_page(page_number)
+    
+    context = {
+        'notifications': notifications_page,
+    }
+    
+    return render(request, 'notifications.html', context)
+
+@login_required
+def mark_notification_read(request, pk):
+    """Mark a notification as read"""
+    try:
+        notification = Notification.objects.get(pk=pk, recipient=request.user)
+        notification.is_read = True
+        notification.save()
+        
+        # If notification has a link and this is not an AJAX request, redirect to it
+        if notification.link and not request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return redirect(notification.link)
+        
+        return JsonResponse({'status': 'success'})
+    except Notification.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Notification not found'}, status=404)
+
+@login_required
+def delete_notification(request, pk):
+    """Delete a notification"""
+    try:
+        notification = Notification.objects.get(pk=pk, recipient=request.user)
+        notification.delete()
+        messages.success(request, "Notification deleted successfully.")
+        return redirect('notifications')
+    except Notification.DoesNotExist:
+        messages.error(request, "Notification not found.")
+        return redirect('notifications')
+
+@login_required
+def get_unread_notification_count(request):
+    """Get the number of unread notifications (for AJAX calls)"""
+    count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+    return JsonResponse({'count': count})
+
+# Context processor for notifications
+def notifications_processor(request):
+    """Context processor to add notification data to all templates"""
+    if request.user.is_authenticated:
+        unread_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+        recent_notifications = Notification.objects.filter(recipient=request.user).order_by('-created_at')[:5]
+        return {
+            'unread_notification_count': unread_count,
+            'recent_notifications': recent_notifications,
+        }
+    return {
+        'unread_notification_count': 0,
+        'recent_notifications': [],
+    }
 
 
 

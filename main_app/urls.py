@@ -59,4 +59,10 @@ urlpatterns = [
     # Activity
     path('activity/', views.recent_activity, name='recent_activity'),
     path('notifications/add/', views.add_notification, name='add_notification'),
+    
+    # Notifications
+    path('notifications/', views.notifications, name='notifications'),
+    path('notifications/mark-read/<int:pk>/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/delete/<int:pk>/', views.delete_notification, name='delete_notification'),
+    path('api/notifications/unread-count/', views.get_unread_notification_count, name='get_unread_notification_count'),
 ]

@@ -286,5 +286,29 @@ def handle_order_completion(sender, instance, created, **kwargs):
                 unit_price=item.price,
                 created_by=instance.created_by
             )
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('low_stock', 'Low Stock Alert'),
+        ('new_order', 'New Order'),
+        ('stock_in', 'Stock Added'),
+        ('stock_out', 'Stock Removed'),
+        ('supplier', 'Supplier Update'),
+        ('system', 'System Notification'),
+    )
+    
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=100)
+    message = models.TextField()
+    link = models.CharField(max_length=255, blank=True, null=True)  # Optional link to related object
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.get_notification_type_display()} for {self.recipient.username}"
      
     
