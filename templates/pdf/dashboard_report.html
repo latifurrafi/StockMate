@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Dashboard Report</title>
+    <style>
+        @page {
+            size: letter portrait;
+            margin: 2cm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+            padding: 0;
+            margin: 0;
+        }
+        h1 {
+            font-size: 22px;
+            margin-bottom: 5px;
+            color: #0369a1;
+            text-align: center;
+        }
+        h2 {
+            font-size: 16px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            color: #0369a1;
+        }
+        p {
+            margin: 0 0 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            text-align: left;
+            font-size: 11px;
+            padding: 8px;
+        }
+        td {
+            padding: 7px;
+            font-size: 10px;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .header {
+            border-bottom: 2px solid #0369a1;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .footer {
+            border-top: 1px solid #ddd;
+            padding-top: 8px;
+            font-size: 9px;
+            text-align: center;
+            color: #666;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+        }
+        .stats-box {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        .stat-item {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        .stat-value {
+            font-weight: bold;
+            font-size: 14px;
+            color: #0369a1;
+        }
+        .two-column {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .column {
+            width: 48%;
+            display: inline-block;
+            vertical-align: top;
+        }
+        .column-right {
+            margin-left: 3%;
+        }
+        .low-stock {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Inventory System Dashboard Report</h1>
+        <p style="text-align: center;">Generated on: {{ now }}</p>
+    </div>
+    
+    <div class="stats-box">
+        <div class="stat-item">
+            <div class="stat-value">{{ total_products }}</div>
+            <div>Total Products</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ active_products }}</div>
+            <div>Active Products</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ total_orders }}</div>
+            <div>Total Orders</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ total_suppliers }}</div>
+            <div>Total Suppliers</div>
+        </div>
+    </div>
+    
+    <div class="two-column">
+        <div class="column">
+            <h2>Top Categories</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Product Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in top_categories %}
+                    <tr>
+                        <td>{{ category.name }}</td>
+                        <td>{{ category.product_count }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2">No categories found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="column column-right">
+            <h2>Stock Movement (Last 7 Days)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Stock In</th>
+                        <th>Stock Out</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in dates|length|get_range %}
+                    <tr>
+                        <td>{{ dates|index:i }}</td>
+                        <td>{{ stock_in_counts|index:i }}</td>
+                        <td>{{ stock_out_counts|index:i }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3">No stock movement data</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <h2>Low Stock Items</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Category</th>
+                <th>Current Stock</th>
+                <th>Reorder Level</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in low_stock_items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.sku }}</td>
+                <td>{{ item.category.name }}</td>
+                <td class="low-stock">{{ item.stock }}</td>
+                <td>{{ item.reorder_level }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">No low stock items</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <h2>Recent Activity</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>User</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for activity in recent_activity %}
+            <tr>
+                <td>{{ activity.date|date:"M d, Y H:i" }}</td>
+                <td>{{ activity.user.username }}</td>
+                <td>{{ activity.action }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3">No recent activity</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        <p>Inventory Management System - Dashboard Report</p>
+        <p>Page 1 of 1</p>
+    </div>
+</body>
+</html> 

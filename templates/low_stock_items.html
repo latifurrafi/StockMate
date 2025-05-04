@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+
+{% block title %}Low Stock Items - Inventory Management System{% endblock %}
+
+{% block content %}
+<div class="flex h-screen overflow-hidden">
+    <!-- Main Content -->
+    <div class="flex flex-col flex-1 w-0 overflow-hidden">
+        <!-- Main Content Area -->
+        <main class="relative flex-1 overflow-y-auto focus:outline-none">
+            <div class="py-6">
+                <div class="px-4 mx-auto max-w-7xl sm:px-6 md:px-8">
+                    <div class="flex items-center justify-between">
+                        <h1 class="text-2xl font-semibold text-gray-900">Low Stock Items</h1>
+                        <div class="flex space-x-3">
+                            <button class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <i class="fas fa-file-export mr-2"></i>
+                                Export
+                            </button>
+                            <button class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <i class="fas fa-print mr-2"></i>
+                                Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-4 mx-auto max-w-7xl sm:px-6 md:px-8">
+                    <!-- Alert Banner -->
+                    <div class="p-4 mt-4 mb-6 border-l-4 border-red-500 bg-red-50 rounded-md">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-circle text-red-600"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700">
+                                    <span class="font-bold">{{ low_stock_products.count }}</span> items are below the minimum stock level (5 units). Please restock these items soon.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div class="p-4 mb-6 bg-white rounded-lg shadow">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4">
+                            <div class="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
+                                <div>
+                                    <label for="category-filter" class="block text-sm font-medium text-gray-700">Category</label>
+                                    <select id="category-filter" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        <option value="">All Categories</option>
+                                        {% for category in low_stock_categories %}
+                                            <option value="{{ category }}">{{ category }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="stock-level" class="block text-sm font-medium text-gray-700">Stock Level</label>
+                                    <select id="stock-level" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        <option value="all">All Low Stock</option>
+                                        <option value="critical">Critical (0-2)</option>
+                                        <option value="low">Low (3-4)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="relative">
+                                <input type="text" id="search-input" placeholder="Search products..." class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Low Stock Items Table -->
+                    <div class="flex flex-col mt-6">
+                        <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                            <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+                                <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Product
+                                                </th>
+                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Category
+                                                </th>
+                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Current Stock
+                                                </th>
+                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Price
+                                                </th>
+                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            {% if low_stock_products %}
+                                                {% for product in low_stock_products %}
+                                                    <tr>
+                                                        <td class="px-6 py-4 whitespace-nowrap">
+                                                            <div class="flex items-center">
+                                                                <div class="flex-shrink-0 h-10 w-10">
+                                                                    {% if product.image %}
+                                                                        <img class="h-10 w-10 rounded-full" src="{{ product.image.url }}" alt="{{ product.name }}">
+                                                                    {% else %}
+                                                                        <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                                                            <i class="fas fa-box text-gray-400"></i>
+                                                                        </div>
+                                                                    {% endif %}
+                                                                </div>
+                                                                <div class="ml-4">
+                                                                    <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td class="px-6 py-4 whitespace-nowrap">
+                                                            <div class="text-sm text-gray-900">{{ product.category.name }}</div>
+                                                        </td>
+                                                        <td class="px-6 py-4 whitespace-nowrap">
+                                                            <span 
+                                                                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                                {% if product.stock <= 2 %}
+                                                                    bg-red-100 text-red-800
+                                                                {% else %}
+                                                                    bg-yellow-100 text-yellow-800
+                                                                {% endif %}">
+                                                                {{ product.stock }}
+                                                            </span>
+                                                        </td>
+                                                        <td class="px-6 py-4 whitespace-nowrap">
+                                                            <div class="text-sm text-gray-900">${{ product.price }}</div>
+                                                        </td>
+                                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                            <a href="{% url 'stock_in' %}" class="text-blue-600 hover:text-blue-900 mr-3">
+                                                                <i class="fas fa-plus-circle"></i> Restock
+                                                            </a>
+                                                            <a href="#" class="text-green-600 hover:text-green-900">
+                                                                <i class="fas fa-shopping-cart"></i> Order
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            {% else %}
+                                                <tr>
+                                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                                        No low stock items found.
+                                                    </td>
+                                                </tr>
+                                            {% endif %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pagination (if needed) -->
+                    {% if low_stock_products.count > 10 %}
+                    <div class="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6 mt-4 rounded-lg shadow">
+                        <div class="flex justify-between flex-1 sm:hidden">
+                            <button class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                                Previous
+                            </button>
+                            <button class="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                                Next
+                            </button>
+                        </div>
+                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm text-gray-700">
+                                    Showing <span class="font-medium">1</span> to <span class="font-medium">10</span> of <span class="font-medium">{{ low_stock_products.count }}</span> results
+                                </p>
+                            </div>
+                            <div>
+                                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                    <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                        <span class="sr-only">Previous</span>
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                    <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600 hover:bg-blue-100">
+                                        1
+                                    </a>
+                                    <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                        <span class="sr-only">Next</span>
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+
+{% block title %}Transaction Details - Inventory Management System{% endblock %}
+
+{% block breadcrumbs %}
+<li>
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-700 md:ml-2">Inventory</span>
+    </div>
+</li>
+<li>
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <a href="{% url 'transactions' %}" class="ml-1 text-sm font-medium text-primary-600 hover:text-primary-700 md:ml-2">Transaction History</a>
+    </div>
+</li>
+<li aria-current="page">
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">Transaction Details</span>
+    </div>
+</li>
+{% endblock %}
+
+{% block page_title %}Transaction Details{% endblock %}
+{% block page_subtitle %}View detailed information about this transaction{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Transaction Info Card -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
+        <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+            <div>
+                <h3 class="text-lg font-medium text-gray-900">Transaction #{{ transaction.id }}</h3>
+                <p class="mt-1 text-sm text-gray-500">{{ transaction.date|date:"F j, Y, g:i a" }}</p>
+            </div>
+            <div>
+                {% if transaction.transaction_type == 'IN' %}
+                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    <i class="fas fa-arrow-down mr-1.5"></i> Stock In
+                </span>
+                {% else %}
+                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                    <i class="fas fa-arrow-up mr-1.5"></i> Stock Out
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Left Column -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Product Information</h4>
+                    <div class="flex items-center mb-6">
+                        <div class="flex-shrink-0 h-16 w-16 rounded-md bg-gray-200 overflow-hidden">
+                            {% if transaction.product.image %}
+                            <img src="{{ transaction.product.image.url }}" alt="{{ transaction.product.name }}" class="h-16 w-16 object-cover">
+                            {% else %}
+                            <div class="h-16 w-16 flex items-center justify-center">
+                                <i class="fas fa-box text-gray-400 text-2xl"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900">{{ transaction.product.name }}</h3>
+                            <p class="text-sm text-gray-500">SKU: {{ transaction.product.sku }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Category</p>
+                                <p class="text-sm text-gray-900">{{ transaction.product.category.name }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Current Stock</p>
+                                <p class="text-sm text-gray-900">{{ transaction.product.stock }} units</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Transaction Details</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Quantity</p>
+                                <p class="text-sm {% if transaction.transaction_type == 'IN' %}text-green-600{% else %}text-red-600{% endif %}">
+                                    {% if transaction.transaction_type == 'IN' %}+{% else %}-{% endif %}{{ transaction.quantity }} units
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Unit Price</p>
+                                <p class="text-sm text-gray-900">${{ transaction.unit_price|floatformat:2 }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Total Value</p>
+                                <p class="text-sm text-gray-900">${{ transaction.total_value|floatformat:2 }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Reason</p>
+                                <p class="text-sm text-gray-900">{{ transaction.get_reason_display }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Column -->
+                <div>
+                    {% if transaction.transaction_type == 'IN' and transaction.supplier %}
+                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Supplier Information</h4>
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <h3 class="text-base font-medium text-gray-900 mb-2">{{ transaction.supplier.name }}</h3>
+                        <div class="text-sm text-gray-700 space-y-1">
+                            <p><i class="fas fa-envelope text-gray-400 mr-2"></i> {{ transaction.supplier.email|default:"No email provided" }}</p>
+                            <p><i class="fas fa-phone text-gray-400 mr-2"></i> {{ transaction.supplier.phone }}</p>
+                            <p><i class="fas fa-map-marker-alt text-gray-400 mr-2"></i> {{ transaction.supplier.address }}</p>
+                        </div>
+                    </div>
+                    {% elif transaction.transaction_type == 'OUT' and transaction.customer %}
+                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Customer Information</h4>
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <h3 class="text-base font-medium text-gray-900 mb-2">{{ transaction.customer.name }}</h3>
+                        <div class="text-sm text-gray-700 space-y-1">
+                            <p><i class="fas fa-envelope text-gray-400 mr-2"></i> {{ transaction.customer.email|default:"No email provided" }}</p>
+                            <p><i class="fas fa-phone text-gray-400 mr-2"></i> {{ transaction.customer.phone }}</p>
+                            <p><i class="fas fa-map-marker-alt text-gray-400 mr-2"></i> {{ transaction.customer.address|default:"No address provided" }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Additional Information</h4>
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Reference</p>
+                            <p class="text-sm text-gray-900">{{ transaction.reference|default:"No reference" }}</p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Created By</p>
+                            <p class="text-sm text-gray-900">
+                                {% if transaction.created_by %}
+                                {{ transaction.created_by.get_full_name|default:transaction.created_by.username }}
+                                {% else %}
+                                System
+                                {% endif %}
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 mb-1">Notes</p>
+                            <p class="text-sm text-gray-900">{{ transaction.notes|default:"No notes" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Actions Bar -->
+    <div class="flex items-center justify-between">
+        <a href="{% url 'transactions' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+            <i class="fas fa-arrow-left mr-1.5"></i> Back to Transactions
+        </a>
+        
+        <div class="flex space-x-3">
+            <button onclick="window.print()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <i class="fas fa-print mr-1.5"></i> Print
+            </button>
+            
+            <!-- Only show for admins or users with delete permission -->
+            {% if perms.main_app.delete_stocktransaction %}
+            <a href="#" onclick="confirmDelete()" class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                <i class="fas fa-trash mr-1.5"></i> Delete
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    function confirmDelete() {
+        if (confirm("Are you sure you want to delete this transaction? This action cannot be undone and will affect inventory counts.")) {
+            window.location.href = "{% url 'transaction_delete' transaction.id %}";
+        }
+    }
+</script>
+{% endblock %}
+{% endblock %} 

@@ -1,0 +1,346 @@
+{% extends 'base.html' %}
+
+{% block title %}Stock Transaction - Inventory Management System{% endblock %}
+
+{% block breadcrumbs %}
+<li>
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-700 md:ml-2">Inventory</span>
+    </div>
+</li>
+<li aria-current="page">
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">Stock Transaction</span>
+    </div>
+</li>
+{% endblock %}
+
+{% block page_title %}Stock Transaction{% endblock %}
+{% block page_subtitle %}Manage inventory stock levels{% endblock %}
+
+{% block content %}
+<div class="p-6" x-data="{ activeTab: 'stock-in' }">
+    <!-- Tabs -->
+    <div class="mb-6 border-b border-gray-200">
+        <div class="flex -mb-px">
+            <button 
+                @click="activeTab = 'stock-in'" 
+                :class="activeTab === 'stock-in' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                class="py-4 px-6 border-b-2 font-medium text-sm focus:outline-none transition-colors duration-200">
+                <i class="fas fa-arrow-down mr-2"></i> Stock In
+            </button>
+            <button 
+                @click="activeTab = 'stock-out'" 
+                :class="activeTab === 'stock-out' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                class="py-4 px-6 border-b-2 font-medium text-sm focus:outline-none transition-colors duration-200">
+                <i class="fas fa-arrow-up mr-2"></i> Stock Out
+            </button>
+        </div>
+    </div>
+    
+    <!-- Stock In Form -->
+    <div x-show="activeTab === 'stock-in'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Add Stock In</h3>
+                <p class="mt-1 text-sm text-gray-500">Record new inventory received from suppliers</p>
+            </div>
+            
+            <form method="post" action="{% url 'stock_in' %}" class="p-6">
+                {% csrf_token %}
+                <input type="hidden" name="transaction_type" value="IN">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Product Selection -->
+                    <div>
+                        <label for="product-in" class="block text-sm font-medium text-gray-700 mb-1">Product <span class="text-red-500">*</span></label>
+                        <select name="product" id="product-in" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            <option value="">Select a product</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">
+                                {{ product.name }} (SKU: {{ product.sku }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Supplier Selection -->
+                    <div>
+                        <label for="supplier" class="block text-sm font-medium text-gray-700 mb-1">Supplier <span class="text-red-500">*</span></label>
+                        <select name="supplier" id="supplier" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            <option value="">Select a supplier</option>
+                            {% for supplier in suppliers %}
+                            <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Quantity -->
+                    <div>
+                        <label for="quantity-in" class="block text-sm font-medium text-gray-700 mb-1">Quantity <span class="text-red-500">*</span></label>
+                        <input type="number" name="quantity" id="quantity-in" min="1" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    </div>
+                    
+                    <!-- Unit Price -->
+                    <div>
+                        <label for="unit_price" class="block text-sm font-medium text-gray-700 mb-1">Unit Price <span class="text-red-500">*</span></label>
+                        <div class="relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm">$</span>
+                            </div>
+                            <input type="number" name="unit_price" id="unit_price" min="0" step="0.01" required class="w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        </div>
+                    </div>
+                    
+                    <!-- Date -->
+                    <div>
+                        <label for="date-in" class="block text-sm font-medium text-gray-700 mb-1">Date <span class="text-red-500">*</span></label>
+                        <input type="date" name="date" id="date-in" required value="{{ today|date:'Y-m-d' }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    </div>
+                    
+                    <!-- Reference Number -->
+                    <div>
+                        <label for="reference-in" class="block text-sm font-medium text-gray-700 mb-1">Reference Number</label>
+                        <input type="text" name="reference" id="reference-in" placeholder="Invoice or PO number" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    </div>
+                </div>
+                
+                <!-- Notes -->
+                <div class="mb-6">
+                    <label for="notes-in" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea name="notes" id="notes-in" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"></textarea>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="flex justify-end space-x-3">
+                    <button type="reset" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        Reset
+                    </button>
+                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        <i class="fas fa-plus-circle mr-1"></i> Add Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Stock Out Form -->
+    <div x-show="activeTab === 'stock-out'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Record Stock Out</h3>
+                <p class="mt-1 text-sm text-gray-500">Record inventory removed from stock</p>
+            </div>
+            
+            <form method="post" action="{% url 'stock_out' %}" class="p-6">
+                {% csrf_token %}
+                <input type="hidden" name="transaction_type" value="OUT">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Product Selection -->
+                    <div>
+                        <label for="product-out" class="block text-sm font-medium text-gray-700 mb-1">Product <span class="text-red-500">*</span></label>
+                        <select name="product" id="product-out" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            <option value="">Select a product</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">
+                                {{ product.name }} (SKU: {{ product.sku }}) - {{ product.stock }} in stock
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Customer Selection -->
+                    <div>
+                        <label for="customer" class="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                        <select name="customer" id="customer" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            <option value="">Select a customer (optional)</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}">{{ customer.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Quantity -->
+                    <div>
+                        <label for="quantity-out" class="block text-sm font-medium text-gray-700 mb-1">Quantity <span class="text-red-500">*</span></label>
+                        <input type="number" name="quantity" id="quantity-out" min="1" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    </div>
+                    
+                    <!-- Reason -->
+                    <div>
+                        <label for="reason" class="block text-sm font-medium text-gray-700 mb-1">Reason <span class="text-red-500">*</span></label>
+                        <select name="reason" id="reason" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            <option value="">Select a reason</option>
+                            <option value="sale">Sale</option>
+                            <option value="damaged">Damaged/Defective</option>
+                            <option value="lost">Lost/Stolen</option>
+                            <option value="return_to_supplier">Return to Supplier</option>
+                            <option value="adjustment">Inventory Adjustment</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Date -->
+                    <div>
+                        <label for="date-out" class="block text-sm font-medium text-gray-700 mb-1">Date <span class="text-red-500">*</span></label>
+                        <input type="date" name="date" id="date-out" required value="{{ today|date:'Y-m-d' }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    </div>
+                    
+                    <!-- Reference Number -->
+                    <div>
+                        <label for="reference-out" class="block text-sm font-medium text-gray-700 mb-1">Reference Number</label>
+                        <input type="text" name="reference" id="reference-out" placeholder="Order number or reference" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    </div>
+                </div>
+                
+                <!-- Notes -->
+                <div class="mb-6">
+                    <label for="notes-out" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea name="notes" id="notes-out" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"></textarea>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="flex justify-end space-x-3">
+                    <button type="reset" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        Reset
+                    </button>
+                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        <i class="fas fa-minus-circle mr-1"></i> Remove Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Recent Transactions -->
+    <div class="mt-8">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Recent Transactions</h3>
+        
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Type
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Product
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Quantity
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Supplier/Customer
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Reference
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for transaction in transactions %}
+                        <tr class="hover:bg-gray-50 {% cycle 'bg-white' 'bg-gray-50' %}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ transaction.date|date:"M d, Y" }}</div>
+                                <div class="text-xs text-gray-500">{{ transaction.date|date:"h:i A" }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if transaction.transaction_type == 'IN' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    <i class="fas fa-arrow-down mr-1"></i> IN
+                                </span>
+                                {% else %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                    <i class="fas fa-arrow-up mr-1"></i> OUT
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10 rounded-md bg-gray-200 overflow-hidden">
+                                        {% if transaction.product.image %}
+                                        <img src="{{ transaction.product.image.url }}" alt="{{ transaction.product.name }}" class="h-10 w-10 object-cover">
+                                        {% else %}
+                                        <div class="h-10 w-10 flex items-center justify-center">
+                                            <i class="fas fa-box text-gray-400"></i>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">{{ transaction.product.name }}</div>
+                                        <div class="text-xs text-gray-500">SKU: {{ transaction.product.sku }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if transaction.transaction_type == 'IN' %}
+                                <div class="text-sm font-medium text-green-600">
+                                    +{{ transaction.quantity }}
+                                </div>
+                                {% else %}
+                                <div class="text-sm font-medium text-red-600">
+                                    -{{ transaction.quantity }}
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if transaction.transaction_type == 'IN' and transaction.supplier %}
+                                <div class="text-sm text-gray-900">{{ transaction.supplier.name }}</div>
+                                <div class="text-xs text-gray-500">Supplier</div>
+                                {% elif transaction.transaction_type == 'OUT' and transaction.customer %}
+                                <div class="text-sm text-gray-900">{{ transaction.customer.name }}</div>
+                                <div class="text-xs text-gray-500">Customer</div>
+                                {% else %}
+                                <div class="text-sm text-gray-500">-</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ transaction.reference|default:"-" }}</div>
+                                <div class="text-xs text-gray-500">{{ transaction.get_reason_display }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <a href="{% url 'transaction_detail' transaction.id %}" class="text-primary-600 hover:text-primary-900 mr-3">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                                No recent transactions found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Simple tab switching without Alpine.js for browsers with JavaScript disabled
+    document.addEventListener('DOMContentLoaded', function() {
+        // URL parameter to set default tab
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        
+        if (tabParam === 'out') {
+            // Switch to stock out tab
+            window.Alpine && window.Alpine.store('stockTab', 'stock-out');
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %} 

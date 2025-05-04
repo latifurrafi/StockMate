@@ -1,0 +1,11 @@
+/* Highlight editable price field */
+td.field-price input {
+    background-color: black !important;  /* light cyan */
+    border: 1px solid #26c6da;
+}
+
+/* Highlight editable stock field */
+td.field-stock input {
+    background-color: black !important;  /* light orange */
+    border: 1px solid white;
+}

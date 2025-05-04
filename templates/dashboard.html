@@ -1,0 +1,386 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Inventory Management System{% endblock %}
+
+{% block breadcrumbs %}
+<li aria-current="page">
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">Dashboard</span>
+    </div>
+</li>
+{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Overview of your inventory system{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 250px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <!-- Total Products -->
+        <div class="bg-white rounded-lg shadow p-5 border-l-4 border-blue-500">
+            <div class="flex justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1">Total Products</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ total_products }}</p>
+                </div>
+                <div class="rounded-full bg-blue-100 p-3">
+                    <i class="fas fa-box text-blue-500"></i>
+                </div>
+            </div>
+            <div class="mt-4 text-sm">
+                <span class="text-green-500 font-medium">
+                    <i class="fas fa-arrow-up"></i> 12%
+                </span>
+                <span class="text-gray-500">since last month</span>
+            </div>
+        </div>
+
+        <!-- Low Stock Items -->
+        <div class="bg-white rounded-lg shadow p-5 border-l-4 border-red-500">
+            <div class="flex justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1">Low Stock Items</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ low_stock_count }}</p>
+                </div>
+                <div class="rounded-full bg-red-100 p-3">
+                    <i class="fas fa-exclamation-triangle text-red-500"></i>
+                </div>
+            </div>
+            <div class="mt-4 text-sm">
+                <a href="{% url 'low_stock_items' %}" class="text-red-500 font-medium hover:underline">
+                    View all <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Total Orders -->
+        <div class="bg-white rounded-lg shadow p-5 border-l-4 border-green-500">
+            <div class="flex justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1">Total Orders</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ total_orders }}</p>
+                </div>
+                <div class="rounded-full bg-green-100 p-3">
+                    <i class="fas fa-shopping-cart text-green-500"></i>
+                </div>
+            </div>
+            <div class="mt-4 text-sm">
+                <span class="text-green-500 font-medium">
+                    <i class="fas fa-arrow-up"></i> 8%
+                </span>
+                <span class="text-gray-500">since last month</span>
+            </div>
+        </div>
+
+        <!-- Total Suppliers -->
+        <div class="bg-white rounded-lg shadow p-5 border-l-4 border-purple-500">
+            <div class="flex justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1">Total Suppliers</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ total_suppliers }}</p>
+                </div>
+                <div class="rounded-full bg-purple-100 p-3">
+                    <i class="fas fa-truck text-purple-500"></i>
+                </div>
+            </div>
+            <div class="mt-4 text-sm">
+                <a href="{% url 'suppliers' %}" class="text-purple-500 font-medium hover:underline">
+                    Manage suppliers <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Stock Movement Chart -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-800">Stock Movement</h3>
+                <p class="text-sm text-gray-500">Last 7 days</p>
+            </div>
+            <div class="p-4">
+                <div class="chart-container">
+                    <canvas id="stockMovementChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Categories Chart -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-800">Top Categories</h3>
+                <p class="text-sm text-gray-500">By product count</p>
+            </div>
+            <div class="p-4">
+                <div class="chart-container">
+                    <canvas id="categoriesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity and Low Stock -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Recent Activity -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800">Recent Activity</h3>
+                    <p class="text-sm text-gray-500">Latest transactions</p>
+                </div>
+                <a href="{% url 'transactions' %}" class="text-sm text-primary-600 hover:underline">View all</a>
+            </div>
+            <div class="p-0">
+                <ul class="divide-y divide-gray-200">
+                    {% for transaction in recent_transactions %}
+                    <li class="p-4 hover:bg-gray-50">
+                        <div class="flex items-start">
+                            {% if transaction.type == 'stock_in' %}
+                            <div class="flex-shrink-0 bg-green-100 rounded-full p-2">
+                                <i class="fas fa-arrow-down text-green-500"></i>
+                            </div>
+                            {% elif transaction.type == 'stock_out' %}
+                            <div class="flex-shrink-0 bg-red-100 rounded-full p-2">
+                                <i class="fas fa-arrow-up text-red-500"></i>
+                            </div>
+                            {% else %}
+                            <div class="flex-shrink-0 bg-blue-100 rounded-full p-2">
+                                <i class="fas fa-exchange-alt text-blue-500"></i>
+                            </div>
+                            {% endif %}
+                            <div class="ml-4 flex-1">
+                                <div class="flex justify-between">
+                                    <p class="text-sm font-medium text-gray-900">{{ transaction.product_name }}</p>
+                                    <p class="text-sm text-gray-500">{{ transaction.date }}</p>
+                                </div>
+                                <p class="text-sm text-gray-500">
+                                    {% if transaction.type == 'stock_in' %}
+                                    Added {{ transaction.quantity }} units
+                                    {% elif transaction.type == 'stock_out' %}
+                                    Removed {{ transaction.quantity }} units
+                                    {% else %}
+                                    Adjusted inventory
+                                    {% endif %}
+                                </p>
+                                <p class="text-xs text-gray-400 mt-1">
+                                    {% if transaction.type == 'stock_in' %}
+                                    From {{ transaction.supplier }}
+                                    {% elif transaction.type == 'stock_out' %}
+                                    Order #{{ transaction.order_id }}
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="p-4 text-center text-gray-500">
+                        No recent transactions
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Low Stock Items -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800">Low Stock Items</h3>
+                    <p class="text-sm text-gray-500">Items that need reordering</p>
+                </div>
+                <a href="{% url 'low_stock_items' %}" class="text-sm text-primary-600 hover:underline">View all</a>
+            </div>
+            <div class="p-0">
+                <ul class="divide-y divide-gray-200">
+                    {% for item in low_stock_items %}
+                    <li class="p-4 hover:bg-gray-50">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10 rounded bg-gray-200 flex items-center justify-center">
+                                    {% if item.image %}
+                                    <img src="{{ item.image.url }}" alt="{{ item.name }}" class="h-10 w-10 object-cover rounded">
+                                    {% else %}
+                                    <i class="fas fa-box text-gray-500"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-900">{{ item.name }}</p>
+                                    <p class="text-xs text-gray-500">SKU: {{ item.sku }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="text-right mr-4">
+                                    <p class="text-sm font-bold text-red-600">{{ item.stock }} left</p>
+                                    <p class="text-xs text-gray-500">Min: {{ item.reorder_level }}</p>
+                                </div>
+                                <a href="{% url 'stock_transaction' %}" class="bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-xs font-medium hover:bg-primary-200">
+                                    Restock
+                                </a>
+                            </div>
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="p-4 text-center text-gray-500">
+                        No low stock items
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="mt-6">
+        <h3 class="text-lg font-medium text-gray-800 mb-4">Quick Actions</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <a href="{% url 'add_product' %}" class="bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
+                <div class="rounded-full bg-blue-100 h-12 w-12 flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-plus text-blue-500"></i>
+                </div>
+                <h4 class="text-sm font-medium text-gray-800">Add Product</h4>
+            </a>
+            <a href="{% url 'stock_transaction' %}" class="bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
+                <div class="rounded-full bg-green-100 h-12 w-12 flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-exchange-alt text-green-500"></i>
+                </div>
+                <h4 class="text-sm font-medium text-gray-800">Stock Transaction</h4>
+            </a>
+            <a href="{% url 'order' %}" class="bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
+                <div class="rounded-full bg-red-100 h-12 w-12 flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-shopping-cart text-red-500"></i>
+                </div>
+                <h4 class="text-sm font-medium text-gray-800">New Order</h4>
+            </a>
+            <a href="{% url 'dashboard_pdf_report' %}" class="bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
+                <div class="rounded-full bg-purple-100 h-12 w-12 flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-file-pdf text-purple-500"></i>
+                </div>
+                <h4 class="text-sm font-medium text-gray-800">Generate Report</h4>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Store Django template data as JSON in data attributes -->
+<script type="application/json" id="chart-data">
+{
+    "dates": {{ chart_dates|safe }},
+    "stockIn": {{ chart_stock_in|safe }},
+    "stockOut": {{ chart_stock_out|safe }},
+    "categories": [
+        {% for category in top_categories %}
+        {
+            "name": "{{ category.name }}",
+            "count": {{ category.product_count }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get data from the JSON embedded in the page
+        const chartData = JSON.parse(document.getElementById('chart-data').textContent);
+        
+        // Extract data for charts
+        const chartDates = chartData.dates;
+        const chartStockIn = chartData.stockIn;
+        const chartStockOut = chartData.stockOut;
+        
+        // Extract category data
+        const categoryLabels = chartData.categories.map(category => category.name);
+        const categoryData = chartData.categories.map(category => category.count);
+        
+        // Stock Movement Chart
+        const stockCtx = document.getElementById('stockMovementChart').getContext('2d');
+        const stockChart = new Chart(stockCtx, {
+            type: 'line',
+            data: {
+                labels: chartDates,
+                datasets: [
+                    {
+                        label: 'Stock In',
+                        data: chartStockIn,
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Stock Out',
+                        data: chartStockOut,
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Categories Chart
+        const categoriesCtx = document.getElementById('categoriesChart').getContext('2d');
+        const categoriesChart = new Chart(categoriesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: categoryLabels,
+                datasets: [{
+                    data: categoryData,
+                    backgroundColor: [
+                        '#3B82F6',
+                        '#10B981',
+                        '#F59E0B',
+                        '#8B5CF6',
+                        '#6B7280'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+
+{% block title %}Transaction History - Inventory Management System{% endblock %}
+
+{% block breadcrumbs %}
+<li>
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-700 md:ml-2">Inventory</span>
+    </div>
+</li>
+<li aria-current="page">
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">Transaction History</span>
+    </div>
+</li>
+{% endblock %}
+
+{% block page_title %}Transaction History{% endblock %}
+{% block page_subtitle %}View and filter all inventory transactions{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+        <div class="p-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Filter Transactions</h3>
+        </div>
+        
+        <form method="get" action="{% url 'transactions' %}" class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Transaction Type -->
+                <div>
+                    <label for="type" class="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
+                    <select name="type" id="type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        <option value="">All Types</option>
+                        <option value="IN" {% if filters.transaction_type == 'IN' %}selected{% endif %}>Stock In</option>
+                        <option value="OUT" {% if filters.transaction_type == 'OUT' %}selected{% endif %}>Stock Out</option>
+                    </select>
+                </div>
+                
+                <!-- Product -->
+                <div>
+                    <label for="product" class="block text-sm font-medium text-gray-700 mb-1">Product</label>
+                    <select name="product" id="product" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        <option value="">All Products</option>
+                        {% for product in products %}
+                        <option value="{{ product.id }}" {% if filters.product_id == product.id|stringformat:"i" %}selected{% endif %}>
+                            {{ product.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Date Range -->
+                <div>
+                    <label for="start_date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <input type="date" name="start_date" id="start_date" value="{{ filters.start_date }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                </div>
+                
+                <div>
+                    <label for="end_date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input type="date" name="end_date" id="end_date" value="{{ filters.end_date }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="mt-4 flex items-center justify-between">
+                <div>
+                    <a href="{% url 'transactions' %}" class="text-sm text-primary-600 hover:text-primary-700">
+                        <i class="fas fa-undo mr-1"></i> Reset Filters
+                    </a>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button type="submit" name="export" value="csv" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm leading-5 font-medium rounded-md text-gray-700 bg-white hover:text-gray-500 focus:outline-none focus:border-primary-300 focus:shadow-outline-primary active:text-gray-800 active:bg-gray-50 transition ease-in-out duration-150">
+                        <i class="fas fa-download mr-1.5"></i> Export to CSV
+                    </button>
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        <i class="fas fa-search mr-1.5"></i> Apply Filters
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Transactions Table -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date & Time
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Type
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Product
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Quantity
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Supplier/Customer
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Reason
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Reference
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for transaction in transactions %}
+                    <tr class="hover:bg-gray-50 {% cycle 'bg-white' 'bg-gray-50' %}">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ transaction.date|date:"M d, Y" }}</div>
+                            <div class="text-xs text-gray-500">{{ transaction.date|date:"h:i A" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if transaction.transaction_type == 'IN' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                <i class="fas fa-arrow-down mr-1"></i> IN
+                            </span>
+                            {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                <i class="fas fa-arrow-up mr-1"></i> OUT
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10 rounded-md bg-gray-200 overflow-hidden">
+                                    {% if transaction.product.image %}
+                                    <img src="{{ transaction.product.image.url }}" alt="{{ transaction.product.name }}" class="h-10 w-10 object-cover">
+                                    {% else %}
+                                    <div class="h-10 w-10 flex items-center justify-center">
+                                        <i class="fas fa-box text-gray-400"></i>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">{{ transaction.product.name }}</div>
+                                    <div class="text-xs text-gray-500">SKU: {{ transaction.product.sku }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if transaction.transaction_type == 'IN' %}
+                            <div class="text-sm font-medium text-green-600">
+                                +{{ transaction.quantity }}
+                            </div>
+                            {% else %}
+                            <div class="text-sm font-medium text-red-600">
+                                -{{ transaction.quantity }}
+                            </div>
+                            {% endif %}
+                            <div class="text-xs text-gray-500">
+                                ${{ transaction.unit_price|floatformat:2 }} each
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if transaction.transaction_type == 'IN' and transaction.supplier %}
+                            <div class="text-sm text-gray-900">{{ transaction.supplier.name }}</div>
+                            <div class="text-xs text-gray-500">Supplier</div>
+                            {% elif transaction.transaction_type == 'OUT' and transaction.customer %}
+                            <div class="text-sm text-gray-900">{{ transaction.customer.name }}</div>
+                            <div class="text-xs text-gray-500">Customer</div>
+                            {% else %}
+                            <div class="text-sm text-gray-500">-</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ transaction.get_reason_display }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ transaction.reference|default:"-" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="{% url 'transaction_detail' transaction.id %}" class="text-primary-600 hover:text-primary-900">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
+                            No transactions found matching your criteria.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if transactions.has_other_pages %}
+        <div class="px-6 py-4 border-t border-gray-200">
+            <nav class="flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if transactions.has_previous %}
+                    <a href="?page={{ transactions.previous_page_number }}{% if filters.transaction_type %}&type={{ filters.transaction_type }}{% endif %}{% if filters.product_id %}&product={{ filters.product_id }}{% endif %}{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    
+                    {% if transactions.has_next %}
+                    <a href="?page={{ transactions.next_page_number }}{% if filters.transaction_type %}&type={{ filters.transaction_type }}{% endif %}{% if filters.product_id %}&product={{ filters.product_id }}{% endif %}{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing
+                            <span class="font-medium">{{ transactions.start_index }}</span>
+                            to
+                            <span class="font-medium">{{ transactions.end_index }}</span>
+                            of
+                            <span class="font-medium">{{ transactions.paginator.count }}</span>
+                            results
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if transactions.has_previous %}
+                            <a href="?page={{ transactions.previous_page_number }}{% if filters.transaction_type %}&type={{ filters.transaction_type }}{% endif %}{% if filters.product_id %}&product={{ filters.product_id }}{% endif %}{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            {% else %}
+                            <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </span>
+                            {% endif %}
+                            
+                            {% for i in transactions.paginator.page_range %}
+                                {% if transactions.number == i %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-primary-500 bg-primary-50 text-sm font-medium text-primary-600">
+                                    {{ i }}
+                                </span>
+                                {% elif i > transactions.number|add:'-3' and i < transactions.number|add:'3' %}
+                                <a href="?page={{ i }}{% if filters.transaction_type %}&type={{ filters.transaction_type }}{% endif %}{% if filters.product_id %}&product={{ filters.product_id }}{% endif %}{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    {{ i }}
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if transactions.has_next %}
+                            <a href="?page={{ transactions.next_page_number }}{% if filters.transaction_type %}&type={{ filters.transaction_type }}{% endif %}{% if filters.product_id %}&product={{ filters.product_id }}{% endif %}{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

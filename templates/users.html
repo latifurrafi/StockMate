@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+
+{% block title %}User Management - Inventory Management System{% endblock %}
+
+{% block breadcrumbs %}
+<li>
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-700 md:ml-2">Administration</span>
+    </div>
+</li>
+<li aria-current="page">
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">User Management</span>
+    </div>
+</li>
+{% endblock %}
+
+{% block page_title %}User Management{% endblock %}
+{% block page_subtitle %}Manage system users and access control{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Stats Section -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-blue-100 rounded-full p-3">
+                    <i class="fas fa-users text-blue-600"></i>
+                </div>
+                <div class="ml-4">
+                    <h2 class="text-2xl font-bold text-gray-900">{{ total_count }}</h2>
+                    <p class="text-sm text-gray-500">Total Users</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-green-100 rounded-full p-3">
+                    <i class="fas fa-check-circle text-green-600"></i>
+                </div>
+                <div class="ml-4">
+                    <h2 class="text-2xl font-bold text-gray-900">{{ active_count }}</h2>
+                    <p class="text-sm text-gray-500">Active Users</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-purple-100 rounded-full p-3">
+                    <i class="fas fa-user-shield text-purple-600"></i>
+                </div>
+                <div class="ml-4">
+                    <h2 class="text-2xl font-bold text-gray-900">{{ staff_count }}</h2>
+                    <p class="text-sm text-gray-500">Staff Users</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-red-100 rounded-full p-3">
+                    <i class="fas fa-user-cog text-red-600"></i>
+                </div>
+                <div class="ml-4">
+                    <h2 class="text-2xl font-bold text-gray-900">{{ admin_count }}</h2>
+                    <p class="text-sm text-gray-500">Admin Users</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search and Filters -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+        <div class="p-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Search Users</h3>
+        </div>
+        
+        <form method="get" action="{% url 'users' %}" class="p-4">
+            <div class="flex items-center">
+                <div class="flex-grow">
+                    <div class="relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" name="search" id="search" value="{{ search_query }}" class="focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="Search by username, email or name">
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        Search
+                    </button>
+                </div>
+                {% if search_query %}
+                <div class="ml-2">
+                    <a href="{% url 'users' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        Clear
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+    
+    <!-- Users Table -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="flex items-center justify-between p-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">All Users</h3>
+            
+            <div class="flex space-x-3">
+                <a href="{% url 'users_pdf_report' %}{% if search_query %}?search={{ search_query }}{% endif %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                    <i class="fas fa-file-pdf text-red-600 mr-2"></i> Generate Report
+                </a>
+                
+                {% if perms.auth.add_user %}
+                <a href="{% url 'admin:auth_user_add' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                    <i class="fas fa-plus mr-2"></i> Add User
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            User
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Email
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Role
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Last Login
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date Joined
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for user in users %}
+                    <tr class="hover:bg-gray-50 {% cycle 'bg-white' 'bg-gray-50' %}">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    {% if user.userprofile.profile_picture %}
+                                    <img class="h-10 w-10 rounded-full object-cover" src="{{ user.userprofile.profile_picture.url }}" alt="{{ user.username }}">
+                                    {% else %}
+                                    <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                                        <span class="text-primary-700 font-medium text-sm">{{ user.username|first|upper }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">{{ user.get_full_name|default:user.username }}</div>
+                                    <div class="text-xs text-gray-500">@{{ user.username }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ user.email|default:"No email" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if user.is_superuser %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Admin
+                            </span>
+                            {% elif user.is_staff %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                                Staff
+                            </span>
+                            {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                User
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if user.is_active %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Active
+                            </span>
+                            {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Inactive
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if user.last_login %}
+                            {{ user.last_login|date:"M d, Y" }}
+                            {% else %}
+                            Never
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ user.date_joined|date:"M d, Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            {% if perms.auth.change_user %}
+                            <a href="{% url 'admin:auth_user_change' user.id %}" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            {% endif %}
+                            
+                            {% if not user.is_superuser and perms.auth.delete_user %}
+                            <a href="{% url 'admin:auth_user_delete' user.id %}" class="text-red-600 hover:text-red-900">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                            No users found matching your criteria.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if users.has_other_pages %}
+        <div class="px-6 py-4 border-t border-gray-200">
+            <nav class="flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if users.has_previous %}
+                    <a href="?page={{ users.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    
+                    {% if users.has_next %}
+                    <a href="?page={{ users.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing
+                            <span class="font-medium">{{ users.start_index }}</span>
+                            to
+                            <span class="font-medium">{{ users.end_index }}</span>
+                            of
+                            <span class="font-medium">{{ users.paginator.count }}</span>
+                            results
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if users.has_previous %}
+                            <a href="?page={{ users.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            {% else %}
+                            <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </span>
+                            {% endif %}
+                            
+                            {% for i in users.paginator.page_range %}
+                                {% if users.number == i %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-primary-500 bg-primary-50 text-sm font-medium text-primary-600">
+                                    {{ i }}
+                                </span>
+                                {% elif i > users.number|add:'-3' and i < users.number|add:'3' %}
+                                <a href="?page={{ i }}{% if search_query %}&search={{ search_query }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    {{ i }}
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if users.has_next %}
+                            <a href="?page={{ users.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

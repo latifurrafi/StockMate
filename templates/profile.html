@@ -1,0 +1,664 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile - Inventory Management System{% endblock %}
+
+{% block breadcrumbs %}
+<li aria-current="page">
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">My Profile</span>
+    </div>
+</li>
+{% endblock %}
+
+{% block page_title %}My Profile{% endblock %}
+{% block page_subtitle %}View and manage your account information{% endblock %}
+
+{% block content %}
+<div x-data="{ activeTab: 'personal_info' }">
+    <!-- Tab Navigation -->
+    <div class="bg-white border-b border-gray-200">
+        <div class="flex flex-wrap -mb-px">
+            <button @click="activeTab = 'personal_info'" :class="{'border-primary-500 text-primary-600 border-b-2': activeTab === 'personal_info', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'personal_info'}" class="flex-1 sm:flex-none py-4 px-6 text-center border-b-2 font-medium text-sm">
+                <i class="fas fa-user mr-2"></i> Personal Information
+            </button>
+            <button @click="activeTab = 'security'" :class="{'border-primary-500 text-primary-600 border-b-2': activeTab === 'security', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'security'}" class="flex-1 sm:flex-none py-4 px-6 text-center border-b-2 font-medium text-sm">
+                <i class="fas fa-lock mr-2"></i> Security
+            </button>
+            <button @click="activeTab = 'preferences'" :class="{'border-primary-500 text-primary-600 border-b-2': activeTab === 'preferences', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'preferences'}" class="flex-1 sm:flex-none py-4 px-6 text-center border-b-2 font-medium text-sm">
+                <i class="fas fa-cog mr-2"></i> Preferences
+            </button>
+            <button @click="activeTab = 'activity'" :class="{'border-primary-500 text-primary-600 border-b-2': activeTab === 'activity', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'activity'}" class="flex-1 sm:flex-none py-4 px-6 text-center border-b-2 font-medium text-sm">
+                <i class="fas fa-history mr-2"></i> Activity Log
+            </button>
+        </div>
+    </div>
+    
+    <!-- Personal Information Tab -->
+    <div x-show="activeTab === 'personal_info'" class="p-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Personal Information</h3>
+                <p class="mt-1 text-sm text-gray-500">Update your personal information and profile picture</p>
+            </div>
+            
+            <form method="post" action="#" enctype="multipart/form-data" class="p-6">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="personal_info">
+                
+                <div class="flex flex-col md:flex-row gap-6 mb-6">
+                    <!-- Profile Picture -->
+                    <div class="flex flex-col items-center space-y-4">
+                        <div class="relative">
+                            <div class="h-32 w-32 rounded-full overflow-hidden border border-gray-200">
+                                {% if user.profile_picture %}
+                                <img src="{{ user.profile_picture.url }}" alt="{{ user.get_full_name }}" class="h-full w-full object-cover">
+                                {% else %}
+                                <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|urlencode }}&background=0D8ABC&color=fff" alt="{{ user.get_full_name }}" class="h-full w-full object-cover">
+                                {% endif %}
+                            </div>
+                            <label for="profile_picture" class="absolute bottom-0 right-0 bg-primary-600 text-white rounded-full p-2 cursor-pointer hover:bg-primary-700 transition-colors">
+                                <i class="fas fa-camera"></i>
+                                <span class="sr-only">Change profile picture</span>
+                            </label>
+                            <input type="file" id="profile_picture" name="profile_picture" class="hidden" accept="image/*">
+                        </div>
+                        <p class="text-xs text-gray-500">Click the camera icon to change your profile picture</p>
+                    </div>
+                    
+                    <!-- Personal Details -->
+                    <div class="flex-1 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name <span class="text-red-500">*</span></label>
+                                <input type="text" name="first_name" id="first_name" value="{{ user.first_name }}" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            </div>
+                            
+                            <div>
+                                <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name <span class="text-red-500">*</span></label>
+                                <input type="text" name="last_name" id="last_name" value="{{ user.last_name }}" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address <span class="text-red-500">*</span></label>
+                            <input type="email" name="email" id="email" value="{{ user.email }}" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        </div>
+                        
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                            <input type="tel" name="phone" id="phone" value="{{ user.phone|default:'' }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        </div>
+                        
+                        <div>
+                            <label for="job_title" class="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+                            <input type="text" name="job_title" id="job_title" value="{{ user.job_title|default:'' }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        </div>
+                        
+                        <div>
+                            <label for="bio" class="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                            <textarea name="bio" id="bio" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">{{ user.bio|default:'' }}</textarea>
+                            <p class="mt-1 text-xs text-gray-500">Brief description for your profile.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="flex justify-end space-x-3">
+                    <button type="reset" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        Reset
+                    </button>
+                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Security Tab -->
+    <div x-show="activeTab === 'security'" class="p-6" x-cloak>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Change Password -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div class="p-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Change Password</h3>
+                    <p class="mt-1 text-sm text-gray-500">Update your password to keep your account secure</p>
+                </div>
+                
+                <form method="post" action="#" class="p-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="change_password">
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label for="current_password" class="block text-sm font-medium text-gray-700 mb-1">Current Password <span class="text-red-500">*</span></label>
+                            <input type="password" name="current_password" id="current_password" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        </div>
+                        
+                        <div>
+                            <label for="new_password" class="block text-sm font-medium text-gray-700 mb-1">New Password <span class="text-red-500">*</span></label>
+                            <input type="password" name="new_password" id="new_password" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        </div>
+                        
+                        <div>
+                            <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password <span class="text-red-500">*</span></label>
+                            <input type="password" name="confirm_password" id="confirm_password" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        </div>
+                        
+                        <div class="pt-2">
+                            <button type="submit" class="w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                                Update Password
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Two-Factor Authentication -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div class="p-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Two-Factor Authentication</h3>
+                    <p class="mt-1 text-sm text-gray-500">Add an extra layer of security to your account</p>
+                </div>
+                
+                <div class="p-6">
+                    {% if user.two_factor_enabled %}
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900">Two-factor authentication is enabled</h4>
+                            <p class="text-xs text-gray-500">Your account is protected with an additional security layer</p>
+                        </div>
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Enabled
+                        </span>
+                    </div>
+                    
+                    <form method="post" action="{% url 'disable_2fa' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                            Disable Two-Factor Authentication
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900">Two-factor authentication is disabled</h4>
+                            <p class="text-xs text-gray-500">Enable 2FA to add an extra layer of security</p>
+                        </div>
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                            Disabled
+                        </span>
+                    </div>
+                    
+                    <a href="#" class="w-full block text-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        Enable Two-Factor Authentication
+                    </a>
+                    {% endif %}
+                    
+                    <div class="mt-4 p-4 bg-gray-50 rounded-md">
+                        <h4 class="text-sm font-medium text-gray-900 mb-2">Recovery Codes</h4>
+                        <p class="text-xs text-gray-500 mb-3">Recovery codes can be used to access your account if you lose your 2FA device.</p>
+                        
+                        {% if user.two_factor_enabled %}
+                        <a href="#" class="text-sm text-primary-600 hover:text-primary-900">
+                            View Recovery Codes
+                        </a>
+                        {% else %}
+                        <p class="text-xs text-gray-500">Recovery codes will be available once you enable two-factor authentication.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- API Keys (if applicable) -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden md:col-span-2">
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">API Keys</h3>
+                        <p class="mt-1 text-sm text-gray-500">Manage API keys for programmatic access to the system</p>
+                    </div>
+                    <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        <i class="fas fa-plus mr-2"></i> Generate New Key
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Name
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Key
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Created
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Last Used
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for key in api_keys %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">{{ key.name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-500">{{ key.key_preview }}...</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-500">{{ key.created_at|date:"M d, Y" }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-500">{{ key.last_used|default:"Never" }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button type="button" class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i> Revoke
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                    No API keys found. Generate a new key to get started.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Preferences Tab -->
+    <div x-show="activeTab === 'preferences'" class="p-6" x-cloak>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Preferences</h3>
+                <p class="mt-1 text-sm text-gray-500">Customize your experience with the inventory system</p>
+            </div>
+            
+            <form method="post" action="#" class="p-6">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="preferences">
+                
+                <!-- Interface Preferences -->
+                <div class="mb-6">
+                    <h4 class="text-sm font-medium text-gray-900 mb-3">Interface Preferences</h4>
+                    
+                    <div class="space-y-4">
+                        <!-- Theme Preference -->
+                        <div>
+                            <label for="theme" class="block text-sm font-medium text-gray-700 mb-1">Theme</label>
+                            <select name="theme" id="theme" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                                <option value="light" {% if user.preferences.theme == 'light' %}selected{% endif %}>Light</option>
+                                <option value="dark" {% if user.preferences.theme == 'dark' %}selected{% endif %}>Dark</option>
+                                <option value="system" {% if user.preferences.theme == 'system' %}selected{% endif %}>System Default</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Dashboard Layout -->
+                        <div>
+                            <label for="dashboard_layout" class="block text-sm font-medium text-gray-700 mb-1">Dashboard Layout</label>
+                            <select name="dashboard_layout" id="dashboard_layout" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                                <option value="default" {% if user.preferences.dashboard_layout == 'default' %}selected{% endif %}>Default</option>
+                                <option value="compact" {% if user.preferences.dashboard_layout == 'compact' %}selected{% endif %}>Compact</option>
+                                <option value="expanded" {% if user.preferences.dashboard_layout == 'expanded' %}selected{% endif %}>Expanded</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Items Per Page -->
+                        <div>
+                            <label for="items_per_page" class="block text-sm font-medium text-gray-700 mb-1">Items Per Page</label>
+                            <select name="items_per_page" id="items_per_page" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                                <option value="10" {% if user.preferences.items_per_page == 10 %}selected{% endif %}>10</option>
+                                <option value="25" {% if user.preferences.items_per_page == 25 %}selected{% endif %}>25</option>
+                                <option value="50" {% if user.preferences.items_per_page == 50 %}selected{% endif %}>50</option>
+                                <option value="100" {% if user.preferences.items_per_page == 100 %}selected{% endif %}>100</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Notification Preferences -->
+                <div class="mb-6">
+                    <h4 class="text-sm font-medium text-gray-900 mb-3">Notification Preferences</h4>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input id="email_notifications" name="email_notifications" type="checkbox" {% if user.preferences.email_notifications %}checked{% endif %} class="focus:ring-primary-500 h-4 w-4 text-primary-600 border-gray-300 rounded">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="email_notifications" class="font-medium text-gray-700">Email Notifications</label>
+                                <p class="text-gray-500">Receive email notifications for important events</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input id="low_stock_alerts" name="low_stock_alerts" type="checkbox" {% if user.preferences.low_stock_alerts %}checked{% endif %} class="focus:ring-primary-500 h-4 w-4 text-primary-600 border-gray-300 rounded">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="low_stock_alerts" class="font-medium text-gray-700">Low Stock Alerts</label>
+                                <p class="text-gray-500">Receive notifications when products are running low</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input id="order_notifications" name="order_notifications" type="checkbox" {% if user.preferences.order_notifications %}checked{% endif %} class="focus:ring-primary-500 h-4 w-4 text-primary-600 border-gray-300 rounded">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="order_notifications" class="font-medium text-gray-700">Order Notifications</label>
+                                <p class="text-gray-500">Receive notifications for new orders and status changes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Regional Preferences -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-900 mb-3">Regional Preferences</h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="language" class="block text-sm font-medium text-gray-700 mb-1">Language</label>
+                            <select name="language" id="language" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                                <option value="en" {% if user.preferences.language == 'en' %}selected{% endif %}>English</option>
+                                <option value="es" {% if user.preferences.language == 'es' %}selected{% endif %}>Spanish</option>
+                                <option value="fr" {% if user.preferences.language == 'fr' %}selected{% endif %}>French</option>
+                                <option value="de" {% if user.preferences.language == 'de' %}selected{% endif %}>German</option>
+                                <option value="zh" {% if user.preferences.language == 'zh' %}selected{% endif %}>Chinese</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="timezone" class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+                            <select name="timezone" id="timezone" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                                <option value="UTC" {% if user.preferences.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                                <option value="America/New_York" {% if user.preferences.timezone == 'America/New_York' %}selected{% endif %}>Eastern Time (ET)</option>
+                                <option value="America/Chicago" {% if user.preferences.timezone == 'America/Chicago' %}selected{% endif %}>Central Time (CT)</option>
+                                <option value="America/Denver" {% if user.preferences.timezone == 'America/Denver' %}selected{% endif %}>Mountain Time (MT)</option>
+                                <option value="America/Los_Angeles" {% if user.preferences.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific Time (PT)</option>
+                                <option value="Europe/London" {% if user.preferences.timezone == 'Europe/London' %}selected{% endif %}>London (GMT)</option>
+                                <option value="Europe/Paris" {% if user.preferences.timezone == 'Europe/Paris' %}selected{% endif %}>Paris (CET)</option>
+                                <option value="Asia/Tokyo" {% if user.preferences.timezone == 'Asia/Tokyo' %}selected{% endif %}>Tokyo (JST)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="date_format" class="block text-sm font-medium text-gray-700 mb-1">Date Format</label>
+                            <select name="date_format" id="date_format" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                                <option value="MM/DD/YYYY" {% if user.preferences.date_format == 'MM/DD/YYYY' %}selected{% endif %}>MM/DD/YYYY</option>
+                                <option value="DD/MM/YYYY" {% if user.preferences.date_format == 'DD/MM/YYYY' %}selected{% endif %}>DD/MM/YYYY</option>
+                                <option value="YYYY-MM-DD" {% if user.preferences.date_format == 'YYYY-MM-DD' %}selected{% endif %}>YYYY-MM-DD</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="currency" class="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                            <select name="currency" id="currency" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                                <option value="USD" {% if user.preferences.currency == 'USD' %}selected{% endif %}>US Dollar ($)</option>
+                                <option value="EUR" {% if user.preferences.currency == 'EUR' %}selected{% endif %}>Euro (€)</option>
+                                <option value="GBP" {% if user.preferences.currency == 'GBP' %}selected{% endif %}>British Pound (£)</option>
+                                <option value="JPY" {% if user.preferences.currency == 'JPY' %}selected{% endif %}>Japanese Yen (¥)</option>
+                                <option value="CAD" {% if user.preferences.currency == 'CAD' %}selected{% endif %}>Canadian Dollar (C$)</option>
+                                <option value="AUD" {% if user.preferences.currency == 'AUD' %}selected{% endif %}>Australian Dollar (A$)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="reset" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        Reset
+                    </button>
+                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        Save Preferences
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Activity Log Tab -->
+    <div x-show="activeTab === 'activity'" class="p-6" x-cloak>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Activity Log</h3>
+                <p class="mt-1 text-sm text-gray-500">View your recent activity in the system</p>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date & Time
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Activity
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                IP Address
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Device
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for activity in activity_logs %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ activity.timestamp|date:"M d, Y" }}</div>
+                                <div class="text-xs text-gray-500">{{ activity.timestamp|date:"h:i A" }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900">{{ activity.action }}</div>
+                                <div class="text-xs text-gray-500">{{ activity.details }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-500">{{ activity.ip_address }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-500">{{ activity.user_agent }}</div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
+                                No activity logs found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if activity_logs.has_other_pages %}
+            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">{{ activity_logs.start_index }}</span> to <span class="font-medium">{{ activity_logs.end_index }}</span> of <span class="font-medium">{{ activity_logs.paginator.count }}</span> activities
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if activity_logs.has_previous %}
+                            <a href="?page={{ activity_logs.previous_page_number }}&tab=activity" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            {% else %}
+                            <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </span>
+                            {% endif %}
+                            
+                            {% for i in activity_logs.paginator.page_range %}
+                                {% if activity_logs.number == i %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-primary-500 bg-primary-50 text-sm font-medium text-primary-600">
+                                    {{ i }}
+                                </span>
+                                {% else %}
+                                <a href="?page={{ i }}&tab=activity" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    {{ i }}
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if activity_logs.has_next %}
+                            <a href="?page={{ activity_logs.next_page_number }}&tab=activity" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Login History -->
+            <div class="p-4 border-t border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Login History</h3>
+                <p class="mt-1 text-sm text-gray-500">Recent login attempts to your account</p>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date & Time
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                IP Address
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Location
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Device
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for login in login_history %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ login.timestamp|date:"M d, Y" }}</div>
+                                <div class="text-xs text-gray-500">{{ login.timestamp|date:"h:i A" }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if login.success %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Successful
+                                </span>
+                                {% else %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                    Failed
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-500">{{ login.ip_address }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-500">{{ login.location|default:"Unknown" }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-500">{{ login.user_agent }}</div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                No login history found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Profile picture preview
+        const profilePictureInput = document.getElementById('profile_picture');
+        if (profilePictureInput) {
+            profilePictureInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        const profileImage = profilePictureInput.closest('.relative').querySelector('img');
+                        if (profileImage) {
+                            profileImage.src = e.target.result;
+                        }
+                    };
+                    
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        
+        // Password validation
+        const newPasswordInput = document.getElementById('new_password');
+        const confirmPasswordInput = document.getElementById('confirm_password');
+        
+        if (newPasswordInput && confirmPasswordInput) {
+            const validatePassword = function() {
+                if (newPasswordInput.value !== confirmPasswordInput.value) {
+                    confirmPasswordInput.setCustomValidity("Passwords don't match");
+                } else {
+                    confirmPasswordInput.setCustomValidity('');
+                }
+            };
+            
+            newPasswordInput.addEventListener('change', validatePassword);
+            confirmPasswordInput.addEventListener('keyup', validatePassword);
+        }
+        
+        // Set active tab from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        
+        if (tabParam) {
+            const tabButton = document.querySelector(`[x-data] button[x-on\\:click*="activeTab = '${tabParam}'"]`);
+            if (tabButton) {
+                tabButton.click();
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Users Report</title>
+    <style>
+        @page {
+            size: letter portrait;
+            margin: 2cm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+            padding: 0;
+            margin: 0;
+        }
+        h1 {
+            font-size: 22px;
+            margin-bottom: 5px;
+            color: #0369a1;
+            text-align: center;
+        }
+        h2 {
+            font-size: 16px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            color: #0369a1;
+        }
+        p {
+            margin: 0 0 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            text-align: left;
+            font-size: 11px;
+            padding: 8px;
+        }
+        td {
+            padding: 7px;
+            font-size: 10px;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .header {
+            border-bottom: 2px solid #0369a1;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .footer {
+            border-top: 1px solid #ddd;
+            padding-top: 8px;
+            font-size: 9px;
+            text-align: center;
+            color: #666;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+        }
+        .stats-box {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        .stat-item {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        .stat-value {
+            font-weight: bold;
+            font-size: 14px;
+            color: #0369a1;
+        }
+        .label {
+            display: inline-block;
+            padding: 2px 5px;
+            font-size: 9px;
+            font-weight: bold;
+            line-height: 1;
+            color: #fff;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: 3px;
+        }
+        .label-admin {
+            background-color: #dc3545;
+        }
+        .label-staff {
+            background-color: #6f42c1;
+        }
+        .label-user {
+            background-color: #0d6efd;
+        }
+        .label-active {
+            background-color: #28a745;
+        }
+        .label-inactive {
+            background-color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>User Management Report</h1>
+        <p style="text-align: center;">Generated on: {{ now }}</p>
+    </div>
+    
+    <div class="stats-box">
+        <div class="stat-item">
+            <div class="stat-value">{{ total_count }}</div>
+            <div>Total Users</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ active_count }}</div>
+            <div>Active Users</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ staff_count }}</div>
+            <div>Staff Users</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ admin_count }}</div>
+            <div>Admin Users</div>
+        </div>
+    </div>
+    
+    <h2>User List</h2>
+    {% if search_query %}
+    <p>Search results for: "{{ search_query }}"</p>
+    {% endif %}
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th>Date Joined</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td>{{ user.get_full_name|default:"-" }}</td>
+                <td>{{ user.email|default:"-" }}</td>
+                <td>
+                    {% if user.is_superuser %}
+                    <span class="label label-admin">Admin</span>
+                    {% elif user.is_staff %}
+                    <span class="label label-staff">Staff</span>
+                    {% else %}
+                    <span class="label label-user">User</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.is_active %}
+                    <span class="label label-active">Active</span>
+                    {% else %}
+                    <span class="label label-inactive">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>{{ user.last_login|date:"M d, Y"|default:"Never" }}</td>
+                <td>{{ user.date_joined|date:"M d, Y" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        <p>Inventory Management System - User Report</p>
+        <p>Page 1 of 1</p>
+    </div>
+</body>
+</html> 

@@ -1,0 +1,501 @@
+{% extends 'base.html' %}
+
+{% block title %}Suppliers - Inventory Management System{% endblock %}
+
+{% block breadcrumbs %}
+<li aria-current="page">
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">Suppliers</span>
+    </div>
+</li>
+{% endblock %}
+
+{% block page_title %}Suppliers{% endblock %}
+{% block page_subtitle %}Manage your product suppliers{% endblock %}
+
+{% block content %}
+<div x-data="{ showAddModal: false, showEditModal: false, showDeleteModal: false, currentSupplier: null }">
+    <!-- Header with search and add button -->
+    <div class="bg-white p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+        <div class="w-full sm:w-64">
+            <form method="get" action="{% url 'suppliers' %}">
+                <div class="relative">
+                    <input type="text" name="search" value="{{ request.GET.search|default:'' }}" placeholder="Search suppliers..."
+                           class="w-full pl-10 pr-4 py-2 rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    {% if request.GET.search %}
+                    <a href="{% url 'suppliers' %}" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+        
+        <button @click="showAddModal = true" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+            <i class="fas fa-plus mr-2"></i> Add Supplier
+        </button>
+    </div>
+    
+    <!-- Suppliers Table -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Supplier
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Contact
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Products
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for supplier in suppliers %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                                <i class="fas fa-building text-primary-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">{{ supplier.name }}</div>
+                                <div class="text-xs text-gray-500">ID: {{ supplier.id }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900">{{ supplier.contact_name }}</div>
+                        <div class="text-xs text-gray-500">
+                            <a href="mailto:{{ supplier.email }}" class="hover:text-primary-600">{{ supplier.email }}</a>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <a href="tel:{{ supplier.phone }}" class="hover:text-primary-600">{{ supplier.phone }}</a>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <a href="{% url 'products' %}?supplier={{ supplier.id }}" class="text-sm text-primary-600 hover:text-primary-900">
+                            {{ supplier.product_count }} products
+                        </a>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if supplier.is_active %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Active
+                        </span>
+                        {% else %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                            Inactive
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <a href="{% url 'view_supplier' supplier.id %}" class="text-primary-600 hover:text-primary-900 mr-3">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                        <button @click="currentSupplier = {{ supplier.id }}; showEditModal = true" class="text-primary-600 hover:text-primary-900 mr-3">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button @click="currentSupplier = {{ supplier.id }}; showDeleteModal = true" class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                        {% if request.GET.search %}
+                        No suppliers found matching "{{ request.GET.search }}".
+                        <a href="{% url 'suppliers' %}" class="text-primary-600 hover:text-primary-900">Clear search</a>
+                        {% else %}
+                        No suppliers found. Add your first supplier to get started.
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if suppliers.has_other_pages %}
+    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm text-gray-700">
+                    Showing <span class="font-medium">{{ suppliers.start_index }}</span> to <span class="font-medium">{{ suppliers.end_index }}</span> of <span class="font-medium">{{ suppliers.paginator.count }}</span> suppliers
+                </p>
+            </div>
+            <div>
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    {% if suppliers.has_previous %}
+                    <a href="?page={{ suppliers.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <span class="sr-only">Previous</span>
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    {% else %}
+                    <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                        <span class="sr-only">Previous</span>
+                        <i class="fas fa-chevron-left"></i>
+                    </span>
+                    {% endif %}
+                    
+                    {% for i in suppliers.paginator.page_range %}
+                        {% if suppliers.number == i %}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-primary-500 bg-primary-50 text-sm font-medium text-primary-600">
+                            {{ i }}
+                        </span>
+                        {% else %}
+                        <a href="?page={{ i }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            {{ i }}
+                        </a>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if suppliers.has_next %}
+                    <a href="?page={{ suppliers.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <span class="sr-only">Next</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% else %}
+                    <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                        <span class="sr-only">Next</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </span>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Add Supplier Modal -->
+    <div x-show="showAddModal" class="fixed z-10 inset-0 overflow-y-auto" x-cloak>
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showAddModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div x-show="showAddModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form method="post" action="{% url 'add_supplier' %}">
+                    {% csrf_token %}
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-primary-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <i class="fas fa-building text-primary-600"></i>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                    Add New Supplier
+                                </h3>
+                                <div class="mt-4 space-y-4">
+                                    <!-- Company Information -->
+                                    <div>
+                                        <label for="name" class="block text-sm font-medium text-gray-700">Company Name <span class="text-red-500">*</span></label>
+                                        <input type="text" name="name" id="name" required class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="contact_name" class="block text-sm font-medium text-gray-700">Contact Person <span class="text-red-500">*</span></label>
+                                            <input type="text" name="contact_name" id="contact_name" required class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="email" class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
+                                            <input type="email" name="email" id="email" required class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="phone" class="block text-sm font-medium text-gray-700">Phone <span class="text-red-500">*</span></label>
+                                            <input type="tel" name="phone" id="phone" required class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="website" class="block text-sm font-medium text-gray-700">Website</label>
+                                            <input type="url" name="website" id="website" placeholder="https://" class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Address -->
+                                    <div>
+                                        <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
+                                        <textarea name="address" id="address" rows="3" class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label for="city" class="block text-sm font-medium text-gray-700">City</label>
+                                            <input type="text" name="city" id="city" class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="state" class="block text-sm font-medium text-gray-700">State/Province</label>
+                                            <input type="text" name="state" id="state" class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="zip_code" class="block text-sm font-medium text-gray-700">ZIP/Postal Code</label>
+                                            <input type="text" name="zip_code" id="zip_code" class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="country" class="block text-sm font-medium text-gray-700">Country</label>
+                                        <select name="country" id="country" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
+                                            <option value="">Select a country</option>
+                                            <option value="US">United States</option>
+                                            <option value="CA">Canada</option>
+                                            <option value="MX">Mexico</option>
+                                            <option value="UK">United Kingdom</option>
+                                            <!-- Add more countries as needed -->
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Status -->
+                                    <div class="flex items-start">
+                                        <div class="flex items-center h-5">
+                                            <input id="is_active" name="is_active" type="checkbox" checked class="focus:ring-primary-500 h-4 w-4 text-primary-600 border-gray-300 rounded">
+                                        </div>
+                                        <div class="ml-3 text-sm">
+                                            <label for="is_active" class="font-medium text-gray-700">Active Supplier</label>
+                                            <p class="text-gray-500">Inactive suppliers won't appear in dropdown menus for new transactions</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4  class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Add Supplier
+                        </button>
+                        <button type="button" @click="showAddModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Supplier Modal -->
+    <div x-show="showEditModal" class="fixed z-10 inset-0 overflow-y-auto" x-cloak>
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showEditModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div x-show="showEditModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form method="post" :action="#?id=${currentSupplier}`">
+                    {% csrf_token %}
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-primary-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <i class="fas fa-building text-primary-600"></i>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                    Edit Supplier
+                                </h3>
+                                <div class="mt-4 space-y-4">
+                                    <!-- Company Information -->
+                                    <div>
+                                        <label for="edit_name" class="block text-sm font-medium text-gray-700">Company Name <span class="text-red-500">*</span></label>
+                                        <input type="text" name="name" id="edit_name" required class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="edit_contact_name" class="block text-sm font-medium text-gray-700">Contact Person <span class="text-red-500">*</span></label>
+                                            <input type="text" name="contact_name" id="edit_contact_name" required class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="edit_email" class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
+                                            <input type="email" name="email" id="edit_email" required class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="edit_phone" class="block text-sm font-medium text-gray-700">Phone <span class="text-red-500">*</span></label>
+                                            <input type="tel" name="phone" id="edit_phone" required class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="edit_website" class="block text-sm font-medium text-gray-700">Website</label>
+                                            <input type="url" name="website" id="edit_website" placeholder="https://" class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Address -->
+                                    <div>
+                                        <label for="edit_address" class="block text-sm font-medium text-gray-700">Address</label>
+                                        <textarea name="address" id="edit_address" rows="3" class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label for="edit_city" class="block text-sm font-medium text-gray-700">City</label>
+                                            <input type="text" name="city" id="edit_city" class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="edit_state" class="block text-sm font-medium text-gray-700">State/Province</label>
+                                            <input type="text" name="state" id="edit_state" class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="edit_zip_code" class="block text-sm font-medium text-gray-700">ZIP/Postal Code</label>
+                                            <input type="text" name="zip_code" id="edit_zip_code" class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="edit_country" class="block text-sm font-medium text-gray-700">Country</label>
+                                        <select name="country" id="edit_country" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
+                                            <option value="">Select a country</option>
+                                            <option value="US">United States</option>
+                                            <option value="CA">Canada</option>
+                                            <option value="MX">Mexico</option>
+                                            <option value="UK">United Kingdom</option>
+                                            <!-- Add more countries as needed -->
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Status -->
+                                    <div class="flex items-start">
+                                        <div class="flex items-center h-5">
+                                            <input id="edit_is_active" name="is_active" type="checkbox" class="focus:ring-primary-500 h-4 w-4 text-primary-600 border-gray-300 rounded">
+                                        </div>
+                                        <div class="ml-3 text-sm">
+                                            <label for="edit_is_active" class="font-medium text-gray-700">Active Supplier</label>
+                                            <p class="text-gray-500">Inactive suppliers won't appear in dropdown menus for new transactions</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Update Supplier
+                        </button>
+                        <button type="button" @click="showEditModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Supplier Modal -->
+    <div x-show="showDeleteModal" class="fixed z-10 inset-0 overflow-y-auto" x-cloak>
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showDeleteModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div x-show="showDeleteModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form method="post" :action="#?id=${currentSupplier}`">
+                    {% csrf_token %}
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <i class="fas fa-exclamation-triangle text-red-600"></i>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                    Delete Supplier
+                                </h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-500">
+                                        Are you sure you want to delete this supplier? All products associated with this supplier will need to be reassigned. This action cannot be undone.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Delete
+                        </button>
+                        <button type="button" @click="showDeleteModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // If we're editing a supplier, we need to fetch the supplier data
+        const editButtons = document.querySelectorAll('[x-data] button[x-on\\:click*="showEditModal = true"]');
+        
+        editButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const supplierId = this.getAttribute('@click').match(/currentSupplier = (\d+)/)[1];
+                
+                // In a real application, you would fetch the supplier data via AJAX
+                // For this example, we'll simulate it with a timeout
+                setTimeout(() => {
+                    // This would normally come from your API
+                    const supplierData = {
+                        name: 'Supplier ' + supplierId,
+                        contact_name: 'Contact Person',
+                        email: 'contact@supplier' + supplierId + '.com',
+                        phone: '(123) 456-7890',
+                        website: 'https://supplier' + supplierId + '.com',
+                        address: '123 Supplier St.',
+                        city: 'Supplier City',
+                        state: 'ST',
+                        zip_code: '12345',
+                        country: 'US',
+                        is_active: true
+                    };
+                    
+                    // Populate the form fields
+                    document.getElementById('edit_name').value = supplierData.name;
+                    document.getElementById('edit_contact_name').value = supplierData.contact_name;
+                    document.getElementById('edit_email').value = supplierData.email;
+                    document.getElementById('edit_phone').value = supplierData.phone;
+                    document.getElementById('edit_website').value = supplierData.website;
+                    document.getElementById('edit_address').value = supplierData.address;
+                    document.getElementById('edit_city').value = supplierData.city;
+                    document.getElementById('edit_state').value = supplierData.state;
+                    document.getElementById('edit_zip_code').value = supplierData.zip_code;
+                    document.getElementById('edit_country').value = supplierData.country;
+                    document.getElementById('edit_is_active').checked = supplierData.is_active;
+                }, 100);
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirm Delete Transaction - Inventory Management System{% endblock %}
+
+{% block breadcrumbs %}
+<li>
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-700 md:ml-2">Inventory</span>
+    </div>
+</li>
+<li>
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <a href="{% url 'transactions' %}" class="ml-1 text-sm font-medium text-primary-600 hover:text-primary-700 md:ml-2">Transaction History</a>
+    </div>
+</li>
+<li>
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <a href="{% url 'transaction_detail' transaction.id %}" class="ml-1 text-sm font-medium text-primary-600 hover:text-primary-700 md:ml-2">Transaction Details</a>
+    </div>
+</li>
+<li aria-current="page">
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">Confirm Delete</span>
+    </div>
+</li>
+{% endblock %}
+
+{% block page_title %}Confirm Delete Transaction{% endblock %}
+{% block page_subtitle %}This action cannot be undone and will affect inventory counts{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
+        <div class="p-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Warning: Confirm Transaction Deletion</h3>
+        </div>
+        
+        <div class="p-6">
+            <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-exclamation-triangle text-red-500"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">Caution: This action cannot be undone</h3>
+                        <div class="mt-2 text-sm text-red-700">
+                            <p>
+                                Deleting this transaction will also reverse its effect on inventory counts.
+                                {% if transaction.transaction_type == 'IN' %}
+                                    Stock level for {{ transaction.product.name }} will be reduced by {{ transaction.quantity }} units.
+                                {% else %}
+                                    Stock level for {{ transaction.product.name }} will be increased by {{ transaction.quantity }} units.
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Transaction Details</h4>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Product</p>
+                            <p class="text-sm text-gray-900">{{ transaction.product.name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Transaction Type</p>
+                            <p class="text-sm text-gray-900">{{ transaction.get_transaction_type_display }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Quantity</p>
+                            <p class="text-sm text-gray-900">{{ transaction.quantity }} units</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Date</p>
+                            <p class="text-sm text-gray-900">{{ transaction.date|date:"F j, Y, g:i a" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Reference</p>
+                            <p class="text-sm text-gray-900">{{ transaction.reference|default:"No reference" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Created By</p>
+                            <p class="text-sm text-gray-900">
+                                {% if transaction.created_by %}
+                                {{ transaction.created_by.get_full_name|default:transaction.created_by.username }}
+                                {% else %}
+                                System
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <form method="post" action="{% url 'transaction_delete' transaction.id %}">
+                {% csrf_token %}
+                <div class="flex items-center justify-between">
+                    <a href="{% url 'transaction_detail' transaction.id %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        <i class="fas fa-arrow-left mr-1.5"></i> Cancel
+                    </a>
+                    
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        <i class="fas fa-trash mr-1.5"></i> Permanently Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 
