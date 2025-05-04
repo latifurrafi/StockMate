@@ -7,12 +7,91 @@
     <title>{% block title %}Inventory Management System{% endblock %}</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Alpine.js for interactivity -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         [x-cloak] { display: none !important; }
+        
+        /* Ensure sidebar has proper z-index and positioning */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 40;
+            width: 16rem;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        /* By default sidebar is open */
+        .sidebar {
+            transform: translateX(0);
+        }
+        
+        /* When closed, move off-screen */
+        .sidebar.closed {
+            transform: translateX(-16rem);
+        }
+        
+        /* Main content transitions when sidebar opens/closes */
+        .main-with-sidebar {
+            transition: margin-left 0.3s ease-in-out;
+            margin-left: 16rem; /* Default has space for sidebar */
+        }
+        
+        .main-full {
+            margin-left: 0; /* When sidebar is closed */
+        }
+        
+        /* Overlay styles */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 30;
+            display: none;
+        }
+        
+        .sidebar-overlay.open {
+            display: block;
+        }
+        
+        /* Sidebar toggle button styling */
+        .sidebar-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            color: #4b5563;
+            transition: all 0.2s ease;
+        }
+        
+        .sidebar-toggle:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+        
+        /* Main content adjustments */
+        @media (max-width: 1023px) {
+            .sidebar {
+                transform: translateX(-16rem); /* Mobile default is closed */
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-with-sidebar {
+                margin-left: 0; /* Mobile default has no margin */
+            }
+        }
     </style>
     <script>
         tailwind.config = {
@@ -38,15 +117,15 @@
     </script>
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col" x-data="{ sidebarOpen: false }">
+<body class="bg-gray-50 min-h-screen flex flex-col">
     <!-- Header -->
     <header class="bg-white shadow-sm sticky top-0 z-10">
         <div class="flex items-center justify-between px-4 py-3">
             <!-- Left side: Logo and toggle -->
             <div class="flex items-center space-x-3">
                 <!-- Mobile menu button -->
-                <button @click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-700 focus:outline-none">
-                    <i class="fas fa-bars text-xl"></i>
+                <button id="sidebar-open" class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
                 </button>
                 
                 <!-- Logo -->
@@ -59,8 +138,8 @@
             <!-- Right side: User menu -->
             <div class="flex items-center space-x-4">
                 <!-- Notifications -->
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" class="text-gray-500 hover:text-gray-700 focus:outline-none relative">
+                <div class="relative notification-dropdown">
+                    <button class="notifications-toggle text-gray-500 hover:text-gray-700 focus:outline-none relative">
                         <i class="fas fa-bell text-xl"></i>
                         {% if unread_notification_count > 0 %}
                         <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">{{ unread_notification_count }}</span>
@@ -68,8 +147,7 @@
                     </button>
                     
                     <!-- Notification dropdown -->
-                    <div x-show="open" @click.away="open = false" x-cloak
-                         class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-50">
+                    <div class="notification-menu absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-50 hidden">
                         <div class="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
                             <h3 class="text-sm font-semibold text-gray-700">Notifications</h3>
                             <a href="{% url 'notifications' %}?mark_all_read=1" class="text-xs text-primary-600 hover:text-primary-700">Mark all read</a>
@@ -123,8 +201,8 @@
                 </div>
                 
                 <!-- User dropdown -->
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" class="flex items-center space-x-2 focus:outline-none">
+                <div class="relative user-dropdown">
+                    <button class="user-toggle flex items-center space-x-2 focus:outline-none">
                         <img class="h-8 w-8 rounded-full object-cover border border-gray-200" 
                              src="https://ui-avatars.com/api/?name=Admin+User&background=0D8ABC&color=fff" alt="User avatar">
                         <div class="hidden md:block text-left">
@@ -135,15 +213,17 @@
                     </button>
                     
                     <!-- User dropdown menu -->
-                    <div x-show="open" @click.away="open = false" x-cloak
-                         class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                    <div class="user-menu absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden">
                         <a href="{% url 'profile' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             <i class="fas fa-user mr-2 text-gray-500"></i> Profile
                         </a>
                         <div class="border-t border-gray-100"></div>
-                        <a href="{% url 'logout' %}" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                        </a>
+                        <form method="post" action="{% url 'logout' %}" class="block">
+                            {% csrf_token %}
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -151,17 +231,15 @@
     </header>
 
     <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar Overlay -->
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+        
         <!-- Sidebar -->
-        <aside class="bg-white shadow-md z-20 w-64 fixed inset-y-0 left-0 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-0"
-               :class="{'translate-x-0': sidebarOpen, '-translate-x-full': !sidebarOpen}">
-            <div class="h-full flex flex-col overflow-y-auto">
-                <!-- Sidebar header (mobile only) -->
-                <div class="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
-                    <div class="flex items-center space-x-2">
-                        <i class="fas fa-box-open text-primary-600 text-xl"></i>
-                        <span class="font-bold text-lg text-gray-800">Inventory System</span>
-                    </div>
-                    <button @click="sidebarOpen = false" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+        <aside id="sidebar" class="sidebar bg-white shadow-md">
+            <div class="h-full flex flex-col overflow-y-auto pt-16">
+                <!-- Sidebar close button in top left -->
+                <div class="absolute top-4 left-4">
+                    <button id="sidebar-close" class="sidebar-toggle">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -198,15 +276,15 @@
                     </a>
                     
                     <!-- Inventory dropdown -->
-                    <div x-data="{ open: false }">
-                        <button @click="open = !open" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100">
+                    <div class="inventory-dropdown">
+                        <button class="inventory-toggle flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100">
                             <div class="flex items-center">
                                 <i class="fas fa-warehouse w-5 h-5 mr-3 text-gray-500"></i>
                                 Inventory
                             </div>
-                            <i class="fas fa-chevron-down text-xs" :class="{'transform rotate-180': open}"></i>
+                            <i class="fas fa-chevron-down text-xs inventory-chevron"></i>
                         </button>
-                        <div x-show="open" class="pl-8 mt-1 space-y-1">
+                        <div class="inventory-submenu pl-8 mt-1 space-y-1 hidden">
                             <a href="{% url 'stock_transaction' %}" class="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100">
                                 <i class="fas fa-exchange-alt w-4 h-4 mr-3 text-gray-500"></i>
                                 Stock Transaction
@@ -248,7 +326,7 @@
         </aside>
 
         <!-- Main content -->
-        <main class="flex-1 overflow-y-auto bg-gray-50 p-4 lg:p-6">
+        <main class="main-with-sidebar flex-1 overflow-y-auto bg-gray-50 p-4 lg:p-6" id="main-content">
             <!-- Breadcrumbs -->
             <div class="mb-6">
                 <nav class="flex" aria-label="Breadcrumb">
@@ -316,8 +394,176 @@
             </div>
         </div>
     </footer>
-    
-    <!-- JavaScript -->
+
+    <!-- JavaScript - block for custom page-specific scripts -->
     {% block extra_js %}{% endblock %}
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Main initialization script - runs after HTML is fully loaded -->
+    <script>
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- Sidebar functionality ---
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOpen = document.getElementById('sidebar-open');
+            const sidebarClose = document.getElementById('sidebar-close');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            const mainContent = document.getElementById('main-content');
+            
+            // Set initial state based on screen size
+            function setInitialState() {
+                if (window.innerWidth < 1024) {
+                    // On mobile, sidebar starts closed
+                    sidebar.classList.add('closed');
+                    mainContent.classList.add('main-full');
+                }
+            }
+            
+            // Call on page load
+            setInitialState();
+            
+            // Open sidebar
+            if (sidebarOpen) {
+                sidebarOpen.addEventListener('click', function() {
+                    openSidebar();
+                });
+            }
+            
+            // Close sidebar
+            if (sidebarClose) {
+                sidebarClose.addEventListener('click', function() {
+                    closeSidebar();
+                });
+            }
+            
+            // Close sidebar when clicking overlay
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', function() {
+                    closeSidebar();
+                });
+            }
+            
+            // Open sidebar function
+            function openSidebar() {
+                sidebar.classList.remove('closed');
+                sidebar.classList.add('open');
+                mainContent.classList.remove('main-full');
+                
+                if (window.innerWidth < 1024) {
+                    sidebarOverlay.classList.add('open');
+                    document.body.classList.add('overflow-hidden');
+                }
+            }
+            
+            // Close sidebar function
+            function closeSidebar() {
+                sidebar.classList.add('closed');
+                sidebar.classList.remove('open');
+                mainContent.classList.add('main-full');
+                sidebarOverlay.classList.remove('open');
+                document.body.classList.remove('overflow-hidden');
+            }
+            
+            // Responsive behavior
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 1024) {
+                    // On desktop, show sidebar by default unless explicitly closed
+                    sidebarOverlay.classList.remove('open');
+                    document.body.classList.remove('overflow-hidden');
+                    
+                    if (sidebar.classList.contains('closed')) {
+                        mainContent.classList.add('main-full');
+                    } else {
+                        mainContent.classList.remove('main-full');
+                    }
+                } else {
+                    // On mobile, adjust as needed
+                    if (!sidebar.classList.contains('closed')) {
+                        sidebarOverlay.classList.add('open');
+                    } else {
+                        mainContent.classList.add('main-full');
+                    }
+                }
+            });
+            
+            // --- Dropdown functionality ---
+            
+            // Notification dropdown
+            const notificationToggle = document.querySelector('.notifications-toggle');
+            const notificationMenu = document.querySelector('.notification-menu');
+            
+            if (notificationToggle && notificationMenu) {
+                notificationToggle.addEventListener('click', function() {
+                    notificationMenu.classList.toggle('hidden');
+                    // Close other dropdowns
+                    document.querySelector('.user-menu').classList.add('hidden');
+                });
+                
+                // Close when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!notificationToggle.contains(e.target) && !notificationMenu.contains(e.target)) {
+                        notificationMenu.classList.add('hidden');
+                    }
+                });
+            }
+            
+            // User dropdown
+            const userToggle = document.querySelector('.user-toggle');
+            const userMenu = document.querySelector('.user-menu');
+            
+            if (userToggle && userMenu) {
+                userToggle.addEventListener('click', function() {
+                    userMenu.classList.toggle('hidden');
+                    // Close other dropdowns
+                    document.querySelector('.notification-menu').classList.add('hidden');
+                });
+                
+                // Close when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!userToggle.contains(e.target) && !userMenu.contains(e.target)) {
+                        userMenu.classList.add('hidden');
+                    }
+                });
+            }
+            
+            // Inventory dropdown
+            const inventoryToggle = document.querySelector('.inventory-toggle');
+            const inventorySubmenu = document.querySelector('.inventory-submenu');
+            const inventoryChevron = document.querySelector('.inventory-chevron');
+            
+            if (inventoryToggle && inventorySubmenu) {
+                inventoryToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    inventorySubmenu.classList.toggle('hidden');
+                    inventoryChevron.classList.toggle('transform');
+                    inventoryChevron.classList.toggle('rotate-180');
+                });
+            }
+            
+            // Initialize all links - make sure HTML loads before these run
+            setTimeout(function() {
+                // Make sure order section is initialized
+                const orderSection = document.querySelector('a[href*="order"]');
+                if (orderSection) {
+                    console.log("Order section initialized");
+                }
+                
+                // Make sure reports section is initialized
+                const reportsSection = document.querySelector('a[href*="reports"]');
+                if (reportsSection) {
+                    console.log("Reports section initialized");
+                }
+                
+                // Make sure users section is initialized
+                const usersSection = document.querySelector('a[href*="users"]');
+                if (usersSection) {
+                    console.log("Users section initialized");
+                }
+            }, 100);
+        });
+    </script>
 </body>
 </html>

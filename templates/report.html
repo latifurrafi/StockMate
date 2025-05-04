@@ -876,16 +876,23 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Get chart data from the server
-        const categoryLabels = JSON.parse('{{ category_labels|escapejs }}');
-        const categoryValues = JSON.parse('{{ category_values|escapejs }}');
-        const salesMonths = JSON.parse('{{ sales_months|escapejs }}');
-        const salesValues = JSON.parse('{{ sales_values|escapejs }}');
-        const topProductLabels = JSON.parse('{{ top_product_labels|escapejs }}');
-        const topProductValues = JSON.parse('{{ top_product_values|escapejs }}');
-        const supplierLabels = JSON.parse('{{ supplier_labels|escapejs }}');
-        const supplierVolumes = JSON.parse('{{ supplier_volumes|escapejs }}');
-        const supplierQuality = JSON.parse('{{ supplier_quality|escapejs }}');
+        // Get chart data from the server - safely parse JSON or fallback to empty arrays
+        let categoryLabels = [], categoryValues = [], salesMonths = [], salesValues = [];
+        let topProductLabels = [], topProductValues = [], supplierLabels = [], supplierVolumes = [], supplierQuality = [];
+        
+        try {
+            categoryLabels = JSON.parse('{{ category_labels|escapejs }}');
+            categoryValues = JSON.parse('{{ category_values|escapejs }}');
+            salesMonths = JSON.parse('{{ sales_months|escapejs }}');
+            salesValues = JSON.parse('{{ sales_values|escapejs }}');
+            topProductLabels = JSON.parse('{{ top_product_labels|escapejs }}');
+            topProductValues = JSON.parse('{{ top_product_values|escapejs }}');
+            supplierLabels = JSON.parse('{{ supplier_labels|escapejs }}');
+            supplierVolumes = JSON.parse('{{ supplier_volumes|escapejs }}');
+            supplierQuality = JSON.parse('{{ supplier_quality|escapejs }}');
+        } catch (e) {
+            console.error('Error parsing chart data:', e);
+        }
         
         // Get current active tab
         const activeTab = '{{ report_type }}';

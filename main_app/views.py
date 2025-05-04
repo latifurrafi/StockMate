@@ -512,7 +512,7 @@ def add_supplier(request):
         email = request.POST.get('email')
         phone = request.POST.get('phone')
         address = request.POST.get('address')
-        contact_person = request.POST.get('contact_person')
+        contact_name = request.POST.get('contact_name')
         
         # Create supplier
         supplier = Supplier.objects.create(
@@ -520,7 +520,7 @@ def add_supplier(request):
             email=email,
             phone=phone,
             address=address,
-            contact_person=contact_person
+            contact_info=contact_name
         )
         
         # Create notification for new supplier
@@ -765,31 +765,45 @@ def order(request):
             )
             
             # Process order items
-            for item in cart_items:
-                product = Product.objects.get(id=item['product_id'])
-                OrderItem.objects.create(
-                    order=order,
-                    product=product,
-                    quantity=item['quantity'],
-                    price=item['price']
-                )
-                
-                # Create stock transaction for this order item
-                StockTransaction.objects.create(
-                    product=product,
-                    quantity=item['quantity'],
-                    transaction_type='OUT',
-                    reference=f"Order #{order.id}",
-                    notes=f"Order for {customer.name if customer else 'Walk-in Customer'}"
-                )
-                
-                # Update product stock
-                product.stock -= item['quantity']
-                product.save()
-                
-                # Check if product is now low on stock
-                if product.stock <= product.reorder_level:
-                    notify_low_stock(product)
+            for i in range(len(product_ids)):
+                if i < len(quantities) and i < len(prices):  # Make sure we have matching data
+                    try:
+                        product = Product.objects.get(id=product_ids[i])
+                        quantity = int(quantities[i])
+                        price = float(prices[i])
+                        
+                        # Skip items with zero quantity
+                        if quantity <= 0:
+                            continue
+                            
+                        # Create order item
+                        OrderItem.objects.create(
+                            order=order,
+                            product=product,
+                            quantity=quantity,
+                            price=price
+                        )
+                        
+                        # Create stock transaction for this order item
+                        StockTransaction.objects.create(
+                            product=product,
+                            quantity=quantity,
+                            transaction_type='OUT',
+                            reference=f"Order #{order.id}",
+                            notes=f"Order for {customer.name if customer else 'Walk-in Customer'}",
+                            customer=customer,
+                            created_by=request.user
+                        )
+                        
+                        # Update product stock
+                        product.stock -= quantity
+                        product.save()
+                        
+                        # Check if product is now low on stock
+                        if product.stock <= product.reorder_level:
+                            notify_low_stock(product)
+                    except Product.DoesNotExist:
+                        messages.error(request, f"Product with ID {product_ids[i]} not found.")
             
             # Create notification for new order
             notify_new_order(order, request.user)
@@ -801,17 +815,10 @@ def order(request):
             )
             
             messages.success(request, f"Order #{order.id} created successfully!")
-            
-            # Clear cart
-            request.session['cart'] = []
-            
             return redirect('order_detail', pk=order.id)
             
         except Customer.DoesNotExist:
             messages.error(request, "Customer not found.")
-            return redirect('orders')
-        except Product.DoesNotExist:
-            messages.error(request, "One or more products not found.")
             return redirect('orders')
     
     # GET request - show orders and order form
@@ -1531,6 +1538,95 @@ def notifications_processor(request):
         'unread_notification_count': 0,
         'recent_notifications': [],
     }
+
+@login_required
+def new_order(request):
+    """View specifically for creating new orders"""
+    if request.method == 'POST':
+        customer_id = request.POST.get('customer')
+        notes = request.POST.get('notes', '')
+        product_ids = request.POST.getlist('product[]')
+        quantities = request.POST.getlist('quantity[]')
+        prices = request.POST.getlist('price[]')
+        
+        try:
+            customer = Customer.objects.get(id=customer_id)
+            
+            # Create order
+            order = Order.objects.create(
+                customer=customer,
+                status='pending',
+                notes=notes,
+                created_by=request.user
+            )
+            
+            # Process order items
+            for i in range(len(product_ids)):
+                if i < len(quantities) and i < len(prices):  # Make sure we have matching data
+                    try:
+                        product = Product.objects.get(id=product_ids[i])
+                        quantity = int(quantities[i])
+                        price = float(prices[i])
+                        
+                        # Skip items with zero quantity
+                        if quantity <= 0:
+                            continue
+                            
+                        # Create order item
+                        OrderItem.objects.create(
+                            order=order,
+                            product=product,
+                            quantity=quantity,
+                            price=price
+                        )
+                        
+                        # Create stock transaction for this order item
+                        StockTransaction.objects.create(
+                            product=product,
+                            quantity=quantity,
+                            transaction_type='OUT',
+                            reference=f"Order #{order.id}",
+                            notes=f"Order for {customer.name if customer else 'Walk-in Customer'}",
+                            customer=customer,
+                            created_by=request.user
+                        )
+                        
+                        # Update product stock
+                        product.stock -= quantity
+                        product.save()
+                        
+                        # Check if product is now low on stock
+                        if product.stock <= product.reorder_level:
+                            notify_low_stock(product)
+                    except Product.DoesNotExist:
+                        messages.error(request, f"Product with ID {product_ids[i]} not found.")
+            
+            # Create notification for new order
+            notify_new_order(order, request.user)
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action=f"Created new order #{order.id}"
+            )
+            
+            messages.success(request, f"Order #{order.id} created successfully!")
+            return redirect('order_detail', pk=order.id)
+            
+        except Customer.DoesNotExist:
+            messages.error(request, "Customer not found.")
+            return redirect('new_order')
+    
+    # GET request - show the form for creating a new order
+    available_products = Product.objects.filter(stock__gt=0)
+    customers = Customer.objects.all()
+    
+    context = {
+        'products': available_products,
+        'customers': customers
+    }
+    
+    return render(request, 'new_order.html', context)
 
 
 

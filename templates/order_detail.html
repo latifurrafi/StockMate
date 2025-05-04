@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+
+{% block title %}Order #{{ order.id }} - Inventory Management System{% endblock %}
+
+{% block breadcrumbs %}
+<li>
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <a href="{% url 'order' %}" class="ml-1 text-sm font-medium text-gray-700 hover:text-primary-600 md:ml-2">Orders</a>
+    </div>
+</li>
+<li aria-current="page">
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">Order #{{ order.id }}</span>
+    </div>
+</li>
+{% endblock %}
+
+{% block page_title %}Order #{{ order.id }}{% endblock %}
+{% block page_subtitle %}View order details and status{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Order Info Card -->
+    <div class="bg-white shadow-md rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-medium text-gray-900">Order Information</h2>
+                
+                <div class="flex space-x-2">
+                    {% if order.status == 'pending' %}
+                    <form method="post" action="{% url 'complete_order' order.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            <i class="fas fa-check mr-2"></i> Complete Order
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    <a href="#" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        <i class="fas fa-print mr-2"></i> Print Order
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Order Details -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Order Details</h3>
+                    <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                        <div class="sm:col-span-1">
+                            <dt class="text-sm font-medium text-gray-500">Order Date</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ order.order_date|date:"F j, Y" }}</dd>
+                        </div>
+                        <div class="sm:col-span-1">
+                            <dt class="text-sm font-medium text-gray-500">Status</dt>
+                            <dd class="mt-1 text-sm">
+                                {% if order.status == 'pending' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                                {% elif order.status == 'processing' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Processing</span>
+                                {% elif order.status == 'completed' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span>
+                                {% elif order.status == 'cancelled' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Cancelled</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div class="sm:col-span-1">
+                            <dt class="text-sm font-medium text-gray-500">Total Items</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ order.items.count }}</dd>
+                        </div>
+                        <div class="sm:col-span-1">
+                            <dt class="text-sm font-medium text-gray-500">Order Total</dt>
+                            <dd class="mt-1 text-sm text-gray-900 font-semibold">${{ order.total_amount|floatformat:2 }}</dd>
+                        </div>
+                        {% if order.notes %}
+                        <div class="sm:col-span-2">
+                            <dt class="text-sm font-medium text-gray-500">Notes</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ order.notes }}</dd>
+                        </div>
+                        {% endif %}
+                    </dl>
+                </div>
+                
+                <!-- Customer Information -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Customer Information</h3>
+                    <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                        <div class="sm:col-span-1">
+                            <dt class="text-sm font-medium text-gray-500">Customer Name</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ order.customer.name }}</dd>
+                        </div>
+                        <div class="sm:col-span-1">
+                            <dt class="text-sm font-medium text-gray-500">Contact Info</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ order.customer.contact_info }}</dd>
+                        </div>
+                        {% if order.customer.email %}
+                        <div class="sm:col-span-1">
+                            <dt class="text-sm font-medium text-gray-500">Email</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ order.customer.email }}</dd>
+                        </div>
+                        {% endif %}
+                        <div class="sm:col-span-1">
+                            <dt class="text-sm font-medium text-gray-500">Phone</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ order.customer.phone }}</dd>
+                        </div>
+                        {% if order.customer.address %}
+                        <div class="sm:col-span-2">
+                            <dt class="text-sm font-medium text-gray-500">Address</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ order.customer.address }}</dd>
+                        </div>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Order Items Card -->
+    <div class="bg-white shadow-md rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">Order Items</h2>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Product
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Price
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Quantity
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in order_items %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-md flex items-center justify-center">
+                                    {% if item.product.image %}
+                                    <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="h-10 w-10 rounded-md object-cover">
+                                    {% else %}
+                                    <i class="fas fa-box text-gray-400"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        <a href="{% url 'product_detail' item.product.id %}" class="hover:text-primary-600">
+                                            {{ item.product.name }}
+                                        </a>
+                                    </div>
+                                    <div class="text-sm text-gray-500">
+                                        SKU: {{ item.product.sku }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">${{ item.price|floatformat:2 }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ item.quantity }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${{ item.total_price|floatformat:2 }}</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-gray-50">
+                    <tr>
+                        <td colspan="3" class="px-6 py-4 text-right text-sm font-medium text-gray-900">Order Total:</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${{ order.total_amount|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="mt-6 flex justify-end space-x-3">
+        <a href="{% url 'order' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+            <i class="fas fa-arrow-left mr-2"></i> Back to Orders
+        </a>
+    </div>
+</div>
+{% endblock %} 

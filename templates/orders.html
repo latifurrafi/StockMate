@@ -45,7 +45,7 @@
         </div>
         
         <!-- Add Order button -->
-        <a href="#" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+        <a href="{% url 'new_order' %}" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
             <i class="fas fa-plus mr-2"></i> New Order
         </a>
     </div>
@@ -174,10 +174,10 @@
                         <div class="text-xs text-gray-500">{{ order.items_count }} items</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <a href="{% url 'view_order' order.id %}" class="text-primary-600 hover:text-primary-900 mr-3">
+                        <a href="{% url 'order_detail' order.id %}" class="text-primary-600 hover:text-primary-900 mr-3">
                             <i class="fas fa-eye"></i> View
                         </a>
-                        <a href="{% url 'edit_order' order.id %}" class="text-primary-600 hover:text-primary-900 mr-3">
+                        <a href="{% url 'order_detail' order.id %}" class="text-primary-600 hover:text-primary-900 mr-3">
                             <i class="fas fa-edit"></i> Edit
                         </a>
                         <button @click="currentOrder = {{ order.id }}; showOrderModal = true" class="text-red-600 hover:text-red-900">

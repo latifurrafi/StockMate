@@ -43,23 +43,35 @@ users = [
 created_users = list(User.objects.all())
 print(f"Found {len(created_users)} existing users")
 
-# Skip user profile creation since they should already exist
-# for user in created_users:
-#     locations = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix']
-#     bios = [
-#         f"Inventory manager with {random.randint(1, 15)} years of experience.",
-#         "Supply chain professional passionate about efficiency.",
-#         "Retail specialist focused on stock management.",
-#         "Operations manager with expertise in inventory control.",
-#         "Logistics coordinator with a detail-oriented approach."
-#     ]
-    
-#     UserProfile.objects.create(
-#         user=user,
-#         bio=random.choice(bios),
-#         location=random.choice(locations)
-#     )
-#     print(f"Created profile for: {user.username}")
+# Create users if none exist
+if not created_users:
+    print("No users found. Creating sample users...")
+    for user_data in users:
+        username = user_data.pop('username')
+        password = user_data.pop('password')
+        user = User.objects.create_user(username=username, **user_data)
+        user.set_password(password)
+        user.save()
+        created_users.append(user)
+        print(f"Created user: {username}")
+        
+    # Create user profiles for new users
+    for user in created_users:
+        locations = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix']
+        bios = [
+            f"Inventory manager with {random.randint(1, 15)} years of experience.",
+            "Supply chain professional passionate about efficiency.",
+            "Retail specialist focused on stock management.",
+            "Operations manager with expertise in inventory control.",
+            "Logistics coordinator with a detail-oriented approach."
+        ]
+        
+        UserProfile.objects.create(
+            user=user,
+            bio=random.choice(bios),
+            location=random.choice(locations)
+        )
+        print(f"Created profile for: {user.username}")
 
 # Create categories
 categories = [
@@ -287,6 +299,17 @@ actions = [
     "Exported inventory data"
 ]
 
+# For activity logs and other parts that need users
+# Ensure we have at least one user for activities requiring users
+if not created_users:
+    # Fallback to admin user if it exists
+    admin_user = User.objects.filter(username='admin').first()
+    if admin_user:
+        created_users.append(admin_user)
+    else:
+        # Skip sections that require users
+        print("Skipping user-dependent sections because no users exist")
+
 for _ in range(200):
     user = random.choice(created_users)
     product = random.choice(created_products)
@@ -336,5 +359,129 @@ for month in months:
             date=date
         )
         print(f"Created report: {name}")
+
+# Add more products (30 additional)
+additional_products_data = [
+    # Electronics - More options
+    {"name": "Gaming Laptop", "description": "17-inch gaming laptop with RTX 3070", "price": "1499.99", "stock": 15, "category": "Electronics"},
+    {"name": "Mechanical Keyboard", "description": "RGB mechanical keyboard with Cherry MX switches", "price": "129.99", "stock": 35, "category": "Electronics"},
+    {"name": "Gaming Mouse", "description": "High DPI gaming mouse with 7 programmable buttons", "price": "59.99", "stock": 40, "category": "Electronics"},
+    {"name": "Bluetooth Speaker", "description": "Portable waterproof Bluetooth speaker", "price": "79.99", "stock": 25, "category": "Electronics"},
+    {"name": "Smart Watch", "description": "Fitness tracker with heart rate monitor", "price": "199.99", "stock": 30, "category": "Electronics"},
+    {"name": "Wireless Charger", "description": "10W fast wireless charging pad", "price": "29.99", "stock": 45, "category": "Electronics"},
+    
+    # Office Supplies - More options
+    {"name": "Whiteboard", "description": "36x24 inch magnetic whiteboard", "price": "45.99", "stock": 20, "category": "Office Supplies"},
+    {"name": "Desk Organizer", "description": "Multi-compartment desk organizer", "price": "19.99", "stock": 40, "category": "Office Supplies"},
+    {"name": "Notebook Set", "description": "Set of 3 professional notebooks", "price": "15.99", "stock": 60, "category": "Office Supplies"},
+    {"name": "Paper Shredder", "description": "10-sheet cross-cut paper shredder", "price": "59.99", "stock": 15, "category": "Office Supplies"},
+    {"name": "Desk Lamp", "description": "LED desk lamp with adjustable brightness", "price": "34.99", "stock": 25, "category": "Office Supplies"},
+    
+    # Furniture - More options
+    {"name": "Ergonomic Desk", "description": "Height-adjustable standing desk", "price": "299.99", "stock": 10, "category": "Furniture"},
+    {"name": "Executive Chair", "description": "Leather executive office chair", "price": "249.99", "stock": 8, "category": "Furniture"},
+    {"name": "Sofa", "description": "3-seater fabric sofa", "price": "699.99", "stock": 5, "category": "Furniture"},
+    {"name": "Coffee Table", "description": "Modern glass coffee table", "price": "149.99", "stock": 12, "category": "Furniture"},
+    {"name": "Bed Frame", "description": "Queen size platform bed frame", "price": "249.99", "stock": 8, "category": "Furniture"},
+    
+    # Kitchen & Dining - More options
+    {"name": "Air Fryer", "description": "Digital air fryer with 8 presets", "price": "99.99", "stock": 20, "category": "Kitchen & Dining"},
+    {"name": "Knife Set", "description": "15-piece stainless steel knife set with block", "price": "79.99", "stock": 15, "category": "Kitchen & Dining"},
+    {"name": "Slow Cooker", "description": "6-quart programmable slow cooker", "price": "49.99", "stock": 18, "category": "Kitchen & Dining"},
+    {"name": "Food Processor", "description": "8-cup food processor", "price": "89.99", "stock": 12, "category": "Kitchen & Dining"},
+    {"name": "Espresso Machine", "description": "Semi-automatic espresso machine", "price": "299.99", "stock": 8, "category": "Kitchen & Dining"},
+    
+    # Health & Beauty
+    {"name": "Electric Toothbrush", "description": "Rechargeable electric toothbrush", "price": "59.99", "stock": 30, "category": "Health & Beauty"},
+    {"name": "Hair Dryer", "description": "Professional ionic hair dryer", "price": "49.99", "stock": 25, "category": "Health & Beauty"},
+    {"name": "Fitness Tracker", "description": "Waterproof fitness and sleep tracker", "price": "99.99", "stock": 35, "category": "Health & Beauty"},
+    {"name": "Digital Scale", "description": "Precision digital bathroom scale", "price": "29.99", "stock": 40, "category": "Health & Beauty"},
+    
+    # Sports & Outdoors
+    {"name": "Yoga Mat", "description": "Non-slip exercise yoga mat", "price": "24.99", "stock": 50, "category": "Sports & Outdoors"},
+    {"name": "Dumbbells Set", "description": "Adjustable dumbbells set 5-25 lbs", "price": "149.99", "stock": 15, "category": "Sports & Outdoors"},
+    {"name": "Camping Tent", "description": "4-person waterproof camping tent", "price": "129.99", "stock": 12, "category": "Sports & Outdoors"},
+    {"name": "Hiking Backpack", "description": "50L hiking and camping backpack", "price": "79.99", "stock": 20, "category": "Sports & Outdoors"},
+    {"name": "Basketball", "description": "Official size indoor/outdoor basketball", "price": "29.99", "stock": 25, "category": "Sports & Outdoors"},
+]
+
+# Add more suppliers
+additional_suppliers_data = [
+    {"name": "Tech Innovations Ltd.", "contact_info": "Michael Chen", "address": "456 Tech Park, Austin, TX", "email": "sales@techinnovations.com", "phone": "555-789-0123"},
+    {"name": "Office Supply Co.", "contact_info": "Lisa Rodriguez", "address": "789 Business Center, Seattle, WA", "email": "orders@officesupplyco.com", "phone": "555-234-5678"},
+    {"name": "Modern Furniture Inc.", "contact_info": "David Johnson", "address": "123 Design District, Miami, FL", "email": "info@modernfurniture.com", "phone": "555-345-6789"},
+    {"name": "Kitchen Pros", "contact_info": "Emily Thompson", "address": "567 Culinary Blvd, San Francisco, CA", "email": "sales@kitchenpros.com", "phone": "555-456-7890"},
+    {"name": "Health & Fitness Depot", "contact_info": "Jason Lee", "address": "890 Wellness Way, Denver, CO", "email": "orders@fitnessdepot.com", "phone": "555-567-8901"},
+]
+
+# Code to create additional products
+for product_data in additional_products_data:
+    category_name = product_data.pop("category")
+    category = next((c for c in created_categories if c.name == category_name), None)
+    
+    if category:
+        product_name = product_data["name"]
+        product_matches = existing_products.filter(name=product_name)
+        
+        if product_matches.exists():
+            product = product_matches.first()
+            created_products.append(product)
+            print(f"Using existing product: {product.name}")
+        else:
+            product_data["category"] = category
+            product_data["price"] = Decimal(product_data["price"])
+            product = Product.objects.create(**product_data)
+            created_products.append(product)
+            print(f"Created product: {product.name}")
+
+# Code to create additional suppliers
+for supplier_data in additional_suppliers_data:
+    supplier_name = supplier_data["name"]
+    supplier_matches = existing_suppliers.filter(name=supplier_name)
+    
+    if supplier_matches.exists():
+        supplier = supplier_matches.first()
+        created_suppliers.append(supplier)
+        print(f"Using existing supplier: {supplier.name}")
+    else:
+        supplier = Supplier.objects.create(**supplier_data)
+        created_suppliers.append(supplier)
+        print(f"Created supplier: {supplier.name}")
+
+# Add more stock transactions
+for _ in range(200):
+    product = random.choice(created_products)
+    quantity = random.randint(5, 50)
+    days_ago = random.randint(0, 90)
+    date = timezone.now() - timedelta(days=days_ago)
+    supplier = random.choice(created_suppliers)
+    
+    stock_in = StockIn.objects.create(
+        product=product,
+        quantity=quantity,
+        date=date,
+        supplier=supplier,
+        reference=f"PO-{random.randint(1000, 9999)}",
+        reason=random.choice(['purchase', 'return', 'adjustment']),
+        unit_price=Decimal(str(round(float(product.price) * 0.7, 2)))  # 30% discount for purchasing
+    )
+    print(f"Created stock in: {quantity} units of {product.name}")
+
+# Add more stock outs
+for _ in range(250):
+    product = random.choice(created_products)
+    quantity = random.randint(1, 10)
+    days_ago = random.randint(0, 90)
+    date = timezone.now() - timedelta(days=days_ago)
+    
+    stock_out = StockOut.objects.create(
+        product=product,
+        quantity=quantity,
+        date=date,
+        reference=f"SO-{random.randint(1000, 9999)}",
+        reason=random.choice(['sale', 'damaged', 'return_to_supplier', 'adjustment']),
+        unit_price=product.price
+    )
+    print(f"Created stock out: {quantity} units of {product.name}")
 
 print("Dummy data generation complete!")
