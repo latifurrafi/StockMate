@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load report_extras %}
 
 {% block title %}Reports - Inventory Management System{% endblock %}
 
@@ -34,29 +35,60 @@
 {% endblock %}
 
 {% block content %}
-<div x-data="{ activeTab: 'overview', dateRange: '30' }">
+<div x-data="{ 
+    activeTab: '{{ report_type }}', 
+    dateRange: '30',
+    startDate: '{{ start_date }}',
+    endDate: '{{ end_date }}'
+}" x-init="
+    // Set active tab from the URL
+    if (window.location.search.includes('type=')) {
+        const urlParams = new URLSearchParams(window.location.search);
+        activeTab = urlParams.get('type');
+    }
+">
     <!-- Report Controls -->
     <div class="bg-white p-4 border-b border-gray-200">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
             <!-- Tab Navigation -->
             <div class="flex space-x-1 rounded-lg bg-gray-100 p-1">
-                <button @click="activeTab = 'overview'" :class="{'bg-white shadow-sm': activeTab === 'overview', 'text-gray-500 hover:text-gray-700': activeTab !== 'overview'}" class="px-4 py-2 text-sm font-medium rounded-md">
+                <a href="?type=overview" @click="activeTab = 'overview'" :class="{'bg-white shadow-sm': activeTab === 'overview', 'text-gray-500 hover:text-gray-700': activeTab !== 'overview'}" class="px-4 py-2 text-sm font-medium rounded-md">
                     Overview
-                </button>
-                <button @click="activeTab = 'inventory'" :class="{'bg-white shadow-sm': activeTab === 'inventory', 'text-gray-500 hover:text-gray-700': activeTab !== 'inventory'}" class="px-4 py-2 text-sm font-medium rounded-md">
+                </a>
+                <a href="?type=inventory" @click="activeTab = 'inventory'" :class="{'bg-white shadow-sm': activeTab === 'inventory', 'text-gray-500 hover:text-gray-700': activeTab !== 'inventory'}" class="px-4 py-2 text-sm font-medium rounded-md">
                     Inventory
-                </button>
-                <button @click="activeTab = 'sales'" :class="{'bg-white shadow-sm': activeTab === 'sales', 'text-gray-500 hover:text-gray-700': activeTab !== 'sales'}" class="px-4 py-2 text-sm font-medium rounded-md">
+                </a>
+                <a href="?type=sales" @click="activeTab = 'sales'" :class="{'bg-white shadow-sm': activeTab === 'sales', 'text-gray-500 hover:text-gray-700': activeTab !== 'sales'}" class="px-4 py-2 text-sm font-medium rounded-md">
                     Sales
-                </button>
-                <button @click="activeTab = 'custom'" :class="{'bg-white shadow-sm': activeTab === 'custom', 'text-gray-500 hover:text-gray-700': activeTab !== 'custom'}" class="px-4 py-2 text-sm font-medium rounded-md">
-                    Custom
-                </button>
+                </a>
+                <a href="?type=transactions" @click="activeTab = 'transactions'" :class="{'bg-white shadow-sm': activeTab === 'transactions', 'text-gray-500 hover:text-gray-700': activeTab !== 'transactions'}" class="px-4 py-2 text-sm font-medium rounded-md">
+                    Transactions
+                </a>
+                <a href="?type=supplier" @click="activeTab = 'supplier'" :class="{'bg-white shadow-sm': activeTab === 'supplier', 'text-gray-500 hover:text-gray-700': activeTab !== 'supplier'}" class="px-4 py-2 text-sm font-medium rounded-md">
+                    Suppliers
+                </a>
             </div>
             
             <!-- Date Range and Export -->
-            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full md:w-auto">
-                <select x-model="dateRange" class="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+            <form action="" method="GET" class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full md:w-auto">
+                <input type="hidden" name="type" :value="activeTab">
+                
+                <select id="dateRange" x-model="dateRange" @change="
+                    if (dateRange !== 'custom') {
+                        const now = new Date();
+                        const end = new Date(now);
+                        const start = new Date(now);
+                        start.setDate(now.getDate() - parseInt(dateRange));
+                        
+                        // Format dates as YYYY-MM-DD
+                        startDate = start.toISOString().split('T')[0];
+                        endDate = end.toISOString().split('T')[0];
+                        
+                        // Update the form inputs
+                        document.getElementById('start_date').value = startDate;
+                        document.getElementById('end_date').value = endDate;
+                    }
+                " class="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
                     <option value="7">Last 7 days</option>
                     <option value="30">Last 30 days</option>
                     <option value="90">Last 90 days</option>
@@ -65,16 +97,16 @@
                 </select>
                 
                 <div x-show="dateRange === 'custom'" class="flex space-x-2">
-                    <input type="date" id="date_from" name="date_from" class="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
-                    <input type="date" id="date_to" name="date_to" class="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    <input type="date" id="start_date" name="start_date" x-model="startDate" class="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    <input type="date" id="end_date" name="end_date" x-model="endDate" class="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
                 </div>
                 
                 <div class="flex space-x-2">
-                    <button class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                        <i class="fas fa-sync-alt mr-2"></i> Refresh
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        <i class="fas fa-sync-alt mr-2"></i> Apply Filters
                     </button>
                     <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        <button type="button" @click="open = !open" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                             <i class="fas fa-download mr-2"></i> Export
                             <i class="fas fa-chevron-down ml-2"></i>
                         </button>
@@ -82,23 +114,20 @@
                         <div x-show="open" @click.away="open = false" x-cloak
                              class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
                             <div class="py-1">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a :href="`?type=${activeTab}&start_date=${startDate}&end_date=${endDate}&export=pdf`" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                     <i class="fas fa-file-pdf mr-2 text-red-500"></i> Export as PDF
                                 </a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-file-excel mr-2 text-green-500"></i> Export as Excel
-                                </a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a :href="`?type=${activeTab}&start_date=${startDate}&end_date=${endDate}&export=csv`" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                     <i class="fas fa-file-csv mr-2 text-blue-500"></i> Export as CSV
                                 </a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="#" @click.prevent="window.print()" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                     <i class="fas fa-print mr-2 text-gray-500"></i> Print Report
                                 </a>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
     
@@ -118,10 +147,7 @@
                     </div>
                 </div>
                 <div class="mt-4 text-sm">
-                    <span class="text-green-500 font-medium">
-                        <i class="fas fa-arrow-up"></i> 8.2%
-                    </span>
-                    <span class="text-gray-500">since last month</span>
+                    <span class="text-gray-500">Current total value</span>
                 </div>
             </div>
 
@@ -137,10 +163,7 @@
                     </div>
                 </div>
                 <div class="mt-4 text-sm">
-                    <span class="text-green-500 font-medium">
-                        <i class="fas fa-arrow-up"></i> 12%
-                    </span>
-                    <span class="text-gray-500">since last month</span>
+                    <span class="text-gray-500">Products in inventory</span>
                 </div>
             </div>
 
@@ -156,10 +179,7 @@
                     </div>
                 </div>
                 <div class="mt-4 text-sm">
-                    <span class="text-green-500 font-medium">
-                        <i class="fas fa-arrow-up"></i> 5.3%
-                    </span>
-                    <span class="text-gray-500">since last month</span>
+                    <span class="text-gray-500">From completed orders</span>
                 </div>
             </div>
 
@@ -175,7 +195,7 @@
                     </div>
                 </div>
                 <div class="mt-4 text-sm">
-                    <a href="#" class="text-red-500 font-medium hover:underline">
+                    <a href="{% url 'low_stock_items' %}" class="text-red-500 font-medium hover:underline">
                         View all <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>
@@ -215,7 +235,7 @@
         <h3 class="text-lg font-medium text-gray-800 mb-4">Available Reports</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Inventory Value Report -->
-            <a href="#" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
+            <a href="?type=inventory" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
                 <div class="rounded-full bg-blue-100 h-12 w-12 flex items-center justify-center mx-auto mb-3">
                     <i class="fas fa-dollar-sign text-blue-500"></i>
                 </div>
@@ -224,7 +244,7 @@
             </a>
             
             <!-- Low Stock Report -->
-            <a href="#" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
+            <a href="?type=inventory&low_stock=true" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
                 <div class="rounded-full bg-red-100 h-12 w-12 flex items-center justify-center mx-auto mb-3">
                     <i class="fas fa-exclamation-triangle text-red-500"></i>
                 </div>
@@ -233,7 +253,7 @@
             </a>
             
             <!-- Sales Report -->
-            <a href="#" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
+            <a href="?type=sales" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
                 <div class="rounded-full bg-green-100 h-12 w-12 flex items-center justify-center mx-auto mb-3">
                     <i class="fas fa-chart-line text-green-500"></i>
                 </div>
@@ -242,7 +262,7 @@
             </a>
             
             <!-- Product Movement Report -->
-            <a href="#" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
+            <a href="?type=transactions" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
                 <div class="rounded-full bg-purple-100 h-12 w-12 flex items-center justify-center mx-auto mb-3">
                     <i class="fas fa-exchange-alt text-purple-500"></i>
                 </div>
@@ -251,7 +271,7 @@
             </a>
             
             <!-- Supplier Performance Report -->
-            <a href="#" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
+            <a href="?type=supplier" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
                 <div class="rounded-full bg-yellow-100 h-12 w-12 flex items-center justify-center mx-auto mb-3">
                     <i class="fas fa-truck text-yellow-500"></i>
                 </div>
@@ -260,7 +280,7 @@
             </a>
             
             <!-- Custom Report -->
-            <a href="#" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
+            <a href="?type=custom" class="report-card bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow">
                 <div class="rounded-full bg-gray-100 h-12 w-12 flex items-center justify-center mx-auto mb-3">
                     <i class="fas fa-cog text-gray-500"></i>
                 </div>
@@ -274,435 +294,617 @@
     <div x-show="activeTab === 'inventory'" class="p-6">
         <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
             <div class="p-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-800">Inventory Value by Category</h3>
+                <h3 class="text-lg font-medium text-gray-800">Inventory Summary</h3>
+                <p class="text-sm text-gray-500">Overview of your inventory status</p>
             </div>
             <div class="p-4">
-                <div class="chart-container">
-                    <canvas id="inventoryCategoryChart"></canvas>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Total Products</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.total_products }}</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Total Value</p>
+                        <p class="text-xl font-bold text-gray-800">${{ summary.total_value|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Low Stock Items</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.low_stock_count }}</p>
+                    </div>
+                    <div class="bg-red-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Out of Stock</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.out_of_stock_count }}</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Category Distribution</h4>
+                        <div class="chart-container">
+                            <canvas id="inventoryCategoryChart"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Top Products by Value</h4>
+                        <div class="chart-container">
+                            <canvas id="topProductsChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
+        <!-- Inventory Products Table -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="text-lg font-medium text-gray-800">Top 10 Most Valuable Products</h3>
-                <a href="#" class="text-sm text-primary-600 hover:underline">View Full Report</a>
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800">Inventory Details</h3>
+                    <p class="text-sm text-gray-500">All products in your inventory</p>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Product
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                SKU
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Category
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Quantity
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Unit Price
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Total Value
-                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        {% for product in top_valuable_products %}
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0 h-10 w-10 rounded-md bg-gray-200 overflow-hidden">
-                                        {% if product.image %}
-                                        <img src="{{ product.image.url }}" alt="{{ product.name }}" class="h-10 w-10 object-cover">
-                                        {% else %}
-                                        <div class="h-10 w-10 flex items-center justify-center">
-                                            <i class="fas fa-box text-gray-400"></i>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
-                                    </div>
-                                </div>
+                        {% for product in report_data %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ product.name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ product.sku|default:"-" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ product.category.name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {% if product.stock <= 0 %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Out of Stock</span>
+                                {% elif product.stock <= product.reorder_level %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Low Stock ({{ product.stock }})</span>
+                                {% else %}
+                                {{ product.stock }}
+                                {% endif %}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{ product.sku }}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-primary-100 text-primary-800">
-                                    {{ product.category.name }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{ product.quantity }}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">${{ product.unit_price|floatformat:2 }}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">${{ product.total_value|floatformat:2 }}</div>
-                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${{ product.price|floatformat:2 }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${{ product.total_value|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">No inventory data available.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            
+            {% if report_data.has_other_pages %}
+            <div class="px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if report_data.has_previous %}
+                    <a href="?type=inventory&page={{ report_data.previous_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% if report_data.has_next %}
+                    <a href="?type=inventory&page={{ report_data.next_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">{{ report_data.start_index }}</span> to <span class="font-medium">{{ report_data.end_index }}</span> of <span class="font-medium">{{ report_data.paginator.count }}</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if report_data.has_previous %}
+                            <a href="?type=inventory&page={{ report_data.previous_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            {% endif %}
+                            
+                            {% for i in report_data.paginator.page_range %}
+                                {% if report_data.number == i %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">{{ i }}</span>
+                                {% elif i > report_data.number|add:'-3' and i < report_data.number|add:'3' %}
+                                <a href="?type=inventory&page={{ i }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ i }}</a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if report_data.has_next %}
+                            <a href="?type=inventory&page={{ report_data.next_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
     
     <!-- Sales Tab -->
     <div x-show="activeTab === 'sales'" class="p-6">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <!-- Monthly Sales Chart -->
-            <div class="bg-white rounded-lg shadow">
-                <div class="p-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-800">Monthly Sales</h3>
-                    <p class="text-sm text-gray-500">Last 12 months</p>
-                </div>
-                <div class="p-4">
-                    <div class="chart-container">
-                        <canvas id="monthlySalesChart"></canvas>
+        <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-800">Sales Summary</h3>
+                <p class="text-sm text-gray-500">From {{ start_date }} to {{ end_date }}</p>
+            </div>
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Total Orders</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.total_orders }}</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Total Sales</p>
+                        <p class="text-xl font-bold text-gray-800">${{ summary.total_sales|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Average Order Value</p>
+                        <p class="text-xl font-bold text-gray-800">${{ summary.avg_order_value|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Items Sold</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.total_items_sold }}</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- Top Selling Products Chart -->
-            <div class="bg-white rounded-lg shadow">
-                <div class="p-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-800">Top Selling Products</h3>
-                    <p class="text-sm text-gray-500">By quantity sold</p>
-                </div>
-                <div class="p-4">
-                    <div class="chart-container">
-                        <canvas id="topProductsChart"></canvas>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Monthly Sales</h4>
+                        <div class="chart-container">
+                            <canvas id="monthlySalesChart"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Top Selling Products</h4>
+                        <div class="chart-container">
+                            <canvas id="topProductsChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         
+        <!-- Sales Orders Table -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="text-lg font-medium text-gray-800">Recent Sales</h3>
-                <a href="#" class="text-sm text-primary-600 hover:underline">View Full Report</a>
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800">Order Details</h3>
+                    <p class="text-sm text-gray-500">Completed orders in the selected period</p>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Order ID
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Date
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Customer
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Items
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Total
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
-                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        {% for order in recent_orders %}
-                        <tr class="hover:bg-gray-50">
+                        {% for order in report_data %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{{ order.id }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.order_date|date:"Y-m-d H:i" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.customer.name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.item_count }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${{ order.total_amount|floatformat:2 }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">#{{ order.order_number }}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{ order.date|date:"M d, Y" }}</div>
-                                <div class="text-xs text-gray-500">{{ order.date|date:"h:i A" }}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{ order.customer_name }}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{ order.items_count }} items</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">${{ order.total|floatformat:2 }}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                {% if order.status == 'delivered' %}
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                    Delivered
+                                    {{ order.get_status_display }}
                                 </span>
-                                {% elif order.status == 'shipped' %}
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                                    Shipped
-                                </span>
-                                {% elif order.status == 'processing' %}
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                    Processing
-                                </span>
-                                {% elif order.status == 'pending' %}
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                    Pending
-                                </span>
-                                {% elif order.status == 'cancelled' %}
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                    Cancelled
-                                </span>
-                                {% endif %}
                             </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">No sales data available for this period.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            
+            {% if report_data.has_other_pages %}
+            <div class="px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if report_data.has_previous %}
+                    <a href="?type=sales&page={{ report_data.previous_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% if report_data.has_next %}
+                    <a href="?type=sales&page={{ report_data.next_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">{{ report_data.start_index }}</span> to <span class="font-medium">{{ report_data.end_index }}</span> of <span class="font-medium">{{ report_data.paginator.count }}</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if report_data.has_previous %}
+                            <a href="?type=sales&page={{ report_data.previous_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            {% endif %}
+                            
+                            {% for i in report_data.paginator.page_range %}
+                                {% if report_data.number == i %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">{{ i }}</span>
+                                {% elif i > report_data.number|add:'-3' and i < report_data.number|add:'3' %}
+                                <a href="?type=sales&page={{ i }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ i }}</a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if report_data.has_next %}
+                            <a href="?type=sales&page={{ report_data.next_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
     
-    <!-- Custom Report Tab -->
-    <div x-show="activeTab === 'custom'" class="p-6">
+    <!-- Transactions Tab -->
+    <div x-show="activeTab === 'transactions'" class="p-6">
         <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
             <div class="p-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-800">Build Custom Report</h3>
-                <p class="text-sm text-gray-500">Select metrics and filters to generate a custom report</p>
+                <h3 class="text-lg font-medium text-gray-800">Transactions Summary</h3>
+                <p class="text-sm text-gray-500">From {{ start_date }} to {{ end_date }}</p>
             </div>
-            <div class="p-6">
-                <form method="post" action="#">
-                    {% csrf_token %}
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <!-- Report Type -->
-                        <div>
-                            <label for="report_type" class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
-                            <select name="report_type" id="report_type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
-                                <option value="inventory">Inventory Report</option>
-                                <option value="sales">Sales Report</option>
-                                <option value="product_movement">Product Movement Report</option>
-                                <option value="supplier">Supplier Report</option>
-                            </select>
-                        </div>
-                        
-                        <!-- Date Range -->
-                        <div>
-                            <label for="date_range" class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-                            <select name="date_range" id="date_range" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
-                                <option value="7">Last 7 days</option>
-                                <option value="30" selected>Last 30 days</option>
-                                <option value="90">Last 90 days</option>
-                                <option value="365">Last year</option>
-                                <option value="custom">Custom range</option>
-                            </select>
-                        </div>
-                        
-                        <!-- Custom Date Range (conditionally shown) -->
-                        <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6" id="custom_date_container" style="display: none;">
-                            <div>
-                                <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-                                <input type="date" name="date_from" id="custom_date_from" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
-                            </div>
-                            <div>
-                                <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-                                <input type="date" name="date_to" id="custom_date_to" class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
-                            </div>
-                        </div>
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Total Transactions</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.total_transactions }}</p>
                     </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <!-- Categories -->
-                        <div>
-                            <label for="categories" class="block text-sm font-medium text-gray-700 mb-1">Categories</label>
-                            <select name="categories" id="categories" multiple class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" size="5">
-                                <option value="all" selected>All Categories</option>
-                                {% for category in categories %}
-                                <option value="{{ category.id }}">{{ category.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <p class="mt-1 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple</p>
-                        </div>
-                        
-                        <!-- Suppliers -->
-                        <div>
-                            <label for="suppliers" class="block text-sm font-medium text-gray-700 mb-1">Suppliers</label>
-                            <select name="suppliers" id="suppliers" multiple class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" size="5">
-                                <option value="all" selected>All Suppliers</option>
-                                {% for supplier in suppliers %}
-                                <option value="{{ supplier.id }}">{{ supplier.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <p class="mt-1 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple</p>
-                        </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Stock In</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.stock_in_count }}</p>
                     </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <!-- Metrics -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Metrics to Include</label>
-                            <div class="space-y-2">
-                                <div class="flex items-start">
-                                    <div class="flex items-center h-5">
-                                        <input id="metric_quantity" name="metrics[]" value="quantity" type="checkbox" checked class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="metric_quantity" class="font-medium text-gray-700">Quantity</label>
-                                    </div>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="flex items-center h-5">
-                                        <input id="metric_value" name="metrics[]" value="value" type="checkbox" checked class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="metric_value" class="font-medium text-gray-700">Value</label>
-                                    </div>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="flex items-center h-5">
-                                        <input id="metric_movement" name="metrics[]" value="movement" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="metric_movement" class="font-medium text-gray-700">Stock Movement</label>
-                                    </div>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="flex items-center h-5">
-                                        <input id="metric_sales" name="metrics[]" value="sales" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="metric_sales" class="font-medium text-gray-700">Sales Performance</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Grouping -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Group By</label>
-                            <div class="space-y-2">
-                                <div class="flex items-start">
-                                    <div class="flex items-center h-5">
-                                        <input id="group_product" name="group_by" value="product" type="radio" checked class="rounded-full border-gray-300 text-primary-600 focus:ring-primary-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="group_product" class="font-medium text-gray-700">Product</label>
-                                    </div>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="flex items-center h-5">
-                                        <input id="group_category" name="group_by" value="category" type="radio" class="rounded-full border-gray-300 text-primary-600 focus:ring-primary-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="group_category" class="font-medium text-gray-700">Category</label>
-                                    </div>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="flex items-center h-5">
-                                        <input id="group_supplier" name="group_by" value="supplier" type="radio" class="rounded-full border-gray-300 text-primary-600 focus:ring-primary-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="group_supplier" class="font-medium text-gray-700">Supplier</label>
-                                    </div>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="flex items-center h-5">
-                                        <input id="group_date" name="group_by" value="date" type="radio" class="rounded-full border-gray-300 text-primary-600 focus:ring-primary-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="group_date" class="font-medium text-gray-700">Date</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="bg-red-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Stock Out</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.stock_out_count }}</p>
                     </div>
-                    
-                    <!-- Chart Type -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Chart Type</label>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                            <div class="relative">
-                                <input type="radio" id="chart_bar" name="chart_type" value="bar" class="sr-only peer" checked>
-                                <label for="chart_bar" class="flex flex-col items-center p-4 border rounded-lg cursor-pointer peer-checked:border-primary-500 peer-checked:bg-primary-50 hover:bg-gray-50">
-                                    <i class="fas fa-chart-bar text-2xl mb-2 text-gray-500 peer-checked:text-primary-600"></i>
-                                    <span class="text-sm font-medium">Bar Chart</span>
-                                </label>
-                            </div>
-                            <div class="relative">
-                                <input type="radio" id="chart_line" name="chart_type" value="line" class="sr-only peer">
-                                <label for="chart_line" class="flex flex-col items-center p-4 border rounded-lg cursor-pointer peer-checked:border-primary-500 peer-checked:bg-primary-50 hover:bg-gray-50">
-                                    <i class="fas fa-chart-line text-2xl mb-2 text-gray-500 peer-checked:text-primary-600"></i>
-                                    <span class="text-sm font-medium">Line Chart</span>
-                                </label>
-                            </div>
-                            <div class="relative">
-                                <input type="radio" id="chart_pie" name="chart_type" value="pie" class="sr-only peer">
-                                <label for="chart_pie" class="flex flex-col items-center p-4 border rounded-lg cursor-pointer peer-checked:border-primary-500 peer-checked:bg-primary-50 hover:bg-gray-50">
-                                    <i class="fas fa-chart-pie text-2xl mb-2 text-gray-500 peer-checked:text-primary-600"></i>
-                                    <span class="text-sm font-medium">Pie Chart</span>
-                                </label>
-                            </div>
-                            <div class="relative">
-                                <input type="radio" id="chart_table" name="chart_type" value="table" class="sr-only peer">
-                                <label for="chart_table" class="flex flex-col items-center p-4 border rounded-lg cursor-pointer peer-checked:border-primary-500 peer-checked:bg-primary-50 hover:bg-gray-50">
-                                    <i class="fas fa-table text-2xl mb-2 text-gray-500 peer-checked:text-primary-600"></i>
-                                    <span class="text-sm font-medium">Table Only</span>
-                                </label>
-                            </div>
-                        </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Net Stock Value</p>
+                        <p class="text-xl font-bold text-gray-800">${{ summary.net_stock_value|default:0|floatformat:2 }}</p>
                     </div>
-                    
-                    <!-- Form Actions -->
-                    <div class="flex justify-end space-x-3">
-                        <button type="reset" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                            Reset
-                        </button>
-                        <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                            Generate Report
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
+        </div>
+        
+        <!-- Transactions Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800">Transaction Details</h3>
+                    <p class="text-sm text-gray-500">All stock transactions in the selected period</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for transaction in report_data %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ transaction.date|date:"Y-m-d H:i" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if transaction.transaction_type == 'IN' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Stock In
+                                </span>
+                                {% else %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                    Stock Out
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ transaction.product.name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ transaction.quantity }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${{ transaction.unit_price|default:"0"|floatformat:2 }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${{ transaction.total_value|floatformat:2 }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ transaction.reference|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">No transactions found for this period.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if report_data.has_other_pages %}
+            <div class="px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if report_data.has_previous %}
+                    <a href="?type=transactions&page={{ report_data.previous_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% if report_data.has_next %}
+                    <a href="?type=transactions&page={{ report_data.next_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">{{ report_data.start_index }}</span> to <span class="font-medium">{{ report_data.end_index }}</span> of <span class="font-medium">{{ report_data.paginator.count }}</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if report_data.has_previous %}
+                            <a href="?type=transactions&page={{ report_data.previous_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            {% endif %}
+                            
+                            {% for i in report_data.paginator.page_range %}
+                                {% if report_data.number == i %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">{{ i }}</span>
+                                {% elif i > report_data.number|add:'-3' and i < report_data.number|add:'3' %}
+                                <a href="?type=transactions&page={{ i }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ i }}</a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if report_data.has_next %}
+                            <a href="?type=transactions&page={{ report_data.next_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Supplier Tab -->
+    <div x-show="activeTab === 'supplier'" class="p-6">
+        <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-800">Supplier Performance Summary</h3>
+                <p class="text-sm text-gray-500">From {{ start_date }} to {{ end_date }}</p>
+            </div>
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Total Suppliers</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.total_suppliers }}</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Active Suppliers</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.active_suppliers }}</p>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Total Purchases</p>
+                        <p class="text-xl font-bold text-gray-800">${{ summary.total_purchases|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-gray-500">Avg. Delivery Time</p>
+                        <p class="text-xl font-bold text-gray-800">{{ summary.avg_delivery_days|default:"N/A" }} days</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Purchase Volume by Supplier</h4>
+                        <div class="chart-container">
+                            <canvas id="supplierVolumeChart"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Product Quality by Supplier</h4>
+                        <div class="chart-container">
+                            <canvas id="supplierQualityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Suppliers Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800">Supplier Details</h3>
+                    <p class="text-sm text-gray-500">All suppliers and their performance metrics</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Purchases</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Order</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reliability</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for supplier in report_data %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">{{ supplier.name }}</div>
+                                        <div class="text-sm text-gray-500">{{ supplier.email }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ supplier.product_count }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${{ supplier.total_purchases|floatformat:2 }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ supplier.last_order_date|default:"Never"|date:"Y-m-d" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if supplier.is_active %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Active
+                                </span>
+                                {% else %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                    Inactive
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {% if supplier.reliability >= 90 %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Excellent ({{ supplier.reliability }}%)
+                                </span>
+                                {% elif supplier.reliability >= 70 %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    Good ({{ supplier.reliability }}%)
+                                </span>
+                                {% elif supplier.reliability >= 50 %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    Average ({{ supplier.reliability }}%)
+                                </span>
+                                {% else %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                    Poor ({{ supplier.reliability }}%)
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">No supplier data available for this period.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if report_data.has_other_pages %}
+            <div class="px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if report_data.has_previous %}
+                    <a href="?type=supplier&page={{ report_data.previous_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% if report_data.has_next %}
+                    <a href="?type=supplier&page={{ report_data.next_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">{{ report_data.start_index }}</span> to <span class="font-medium">{{ report_data.end_index }}</span> of <span class="font-medium">{{ report_data.paginator.count }}</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if report_data.has_previous %}
+                            <a href="?type=supplier&page={{ report_data.previous_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            {% endif %}
+                            
+                            {% for i in report_data.paginator.page_range %}
+                                {% if report_data.number == i %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">{{ i }}</span>
+                                {% elif i > report_data.number|add:'-3' and i < report_data.number|add:'3' %}
+                                <a href="?type=supplier&page={{ i }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ i }}</a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if report_data.has_next %}
+                            <a href="?type=supplier&page={{ report_data.next_page_number }}&start_date={{ start_date }}&end_date={{ end_date }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Date range handling for custom report
-        const dateRange = document.getElementById('date_range');
-        const customDateContainer = document.getElementById('custom_date_container');
+        // Get chart data from the server
+        const categoryLabels = JSON.parse('{{ category_labels|escapejs }}');
+        const categoryValues = JSON.parse('{{ category_values|escapejs }}');
+        const salesMonths = JSON.parse('{{ sales_months|escapejs }}');
+        const salesValues = JSON.parse('{{ sales_values|escapejs }}');
+        const topProductLabels = JSON.parse('{{ top_product_labels|escapejs }}');
+        const topProductValues = JSON.parse('{{ top_product_values|escapejs }}');
+        const supplierLabels = JSON.parse('{{ supplier_labels|escapejs }}');
+        const supplierVolumes = JSON.parse('{{ supplier_volumes|escapejs }}');
+        const supplierQuality = JSON.parse('{{ supplier_quality|escapejs }}');
         
-        if (dateRange) {
-            dateRange.addEventListener('change', function() {
-                if (this.value === 'custom') {
-                    customDateContainer.style.display = 'grid';
-                } else {
-                    customDateContainer.style.display = 'none';
-                }
-            });
-        }
+        // Get current active tab
+        const activeTab = '{{ report_type }}';
         
         // Sales Trend Chart
-        const salesCtx = document.getElementById('salesTrendChart');
-        if (salesCtx) {
-            const salesChart = new Chart(salesCtx, {
+        const salesTrendCtx = document.getElementById('salesTrendChart');
+        if (salesTrendCtx) {
+            const salesTrendChart = new Chart(salesTrendCtx, {
                 type: 'line',
                 data: {
-                    labels: ['May 1', 'May 5', 'May 10', 'May 15', 'May 20', 'May 25', 'May 30'],
+                    labels: salesMonths,
                     datasets: [{
                         label: 'Sales',
-                        data: [1200, 1900, 1500, 2500, 2200, 3000, 3400],
-                        borderColor: '#0ea5e9',
-                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                        data: salesValues,
+                        backgroundColor: 'rgba(14, 165, 233, 0.2)',
+                        borderColor: 'rgba(14, 165, 233, 1)',
                         borderWidth: 2,
                         tension: 0.3,
+                        pointBackgroundColor: 'rgba(14, 165, 233, 1)',
                         fill: true
                     }]
                 },
@@ -711,7 +913,14 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            position: 'top',
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Sales: $${context.raw.toFixed(2)}`;
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -734,15 +943,16 @@
             const categoriesChart = new Chart(categoriesCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Electronics', 'Furniture', 'Clothing', 'Books', 'Others'],
+                    labels: categoryLabels,
                     datasets: [{
-                        data: [12000, 8000, 5000, 3000, 2000],
+                        data: categoryValues,
                         backgroundColor: [
                             '#3B82F6',
                             '#10B981',
                             '#F59E0B',
                             '#8B5CF6',
-                            '#6B7280'
+                            '#6B7280',
+                            '#EC4899'
                         ],
                         borderWidth: 1
                     }]
@@ -761,7 +971,7 @@
                                     const value = context.raw || 0;
                                     const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                     const percentage = Math.round((value / total) * 100);
-                                    return `${label}: $${value} (${percentage}%)`;
+                                    return `${label}: $${value.toFixed(2)} (${percentage}%)`;
                                 }
                             }
                         }
@@ -770,29 +980,31 @@
             });
         }
         
-        // Inventory Category Chart
+        // Inventory Category Chart - for inventory tab
         const inventoryCategoryCtx = document.getElementById('inventoryCategoryChart');
         if (inventoryCategoryCtx) {
             const inventoryCategoryChart = new Chart(inventoryCategoryCtx, {
                 type: 'bar',
                 data: {
-                    labels: ['Electronics', 'Furniture', 'Clothing', 'Books', 'Others'],
+                    labels: categoryLabels,
                     datasets: [{
                         label: 'Inventory Value',
-                        data: [12000, 8000, 5000, 3000, 2000],
+                        data: categoryValues,
                         backgroundColor: [
                             'rgba(59, 130, 246, 0.7)',
                             'rgba(16, 185, 129, 0.7)',
                             'rgba(245, 158, 11, 0.7)',
                             'rgba(139, 92, 246, 0.7)',
-                            'rgba(107, 114, 128, 0.7)'
+                            'rgba(107, 114, 128, 0.7)',
+                            'rgba(236, 72, 153, 0.7)'
                         ],
                         borderColor: [
                             'rgb(59, 130, 246)',
                             'rgb(16, 185, 129)',
                             'rgb(245, 158, 11)',
                             'rgb(139, 92, 246)',
-                            'rgb(107, 114, 128)'
+                            'rgb(107, 114, 128)',
+                            'rgb(236, 72, 153)'
                         ],
                         borderWidth: 1
                     }]
@@ -807,7 +1019,7 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return `Inventory Value: $${context.raw}`;
+                                    return `Inventory Value: $${context.raw.toFixed(2)}`;
                                 }
                             }
                         }
@@ -826,16 +1038,16 @@
             });
         }
         
-        // Monthly Sales Chart
+        // Monthly Sales Chart - for sales tab
         const monthlySalesCtx = document.getElementById('monthlySalesChart');
         if (monthlySalesCtx) {
             const monthlySalesChart = new Chart(monthlySalesCtx, {
                 type: 'bar',
                 data: {
-                    labels: ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May'],
+                    labels: salesMonths,
                     datasets: [{
                         label: 'Sales',
-                        data: [6500, 5900, 8000, 8100, 9600, 12000, 15000, 10000, 9500, 11000, 12500, 14000],
+                        data: salesValues,
                         backgroundColor: 'rgba(14, 165, 233, 0.7)',
                         borderColor: 'rgb(14, 165, 233)',
                         borderWidth: 1
@@ -851,7 +1063,7 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return `Sales: $${context.raw}`;
+                                    return `Sales: $${context.raw.toFixed(2)}`;
                                 }
                             }
                         }
@@ -870,16 +1082,16 @@
             });
         }
         
-        // Top Products Chart
+        // Top Products Chart - for sales and inventory tabs
         const topProductsCtx = document.getElementById('topProductsChart');
         if (topProductsCtx) {
             const topProductsChart = new Chart(topProductsCtx, {
-                type: 'horizontalBar',
+                type: 'bar',
                 data: {
-                    labels: ['Laptop HP 15', 'Wireless Mouse', 'Office Chair', 'Desk Lamp', 'USB-C Cable'],
+                    labels: topProductLabels,
                     datasets: [{
-                        label: 'Units Sold',
-                        data: [120, 95, 80, 75, 65],
+                        label: activeTab === 'sales' ? 'Units Sold' : 'Value',
+                        data: topProductValues,
                         backgroundColor: [
                             'rgba(59, 130, 246, 0.7)',
                             'rgba(16, 185, 129, 0.7)',
@@ -904,11 +1116,113 @@
                     plugins: {
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (activeTab === 'sales') {
+                                        return `Units Sold: ${context.raw}`;
+                                    } else {
+                                        return `Value: $${context.raw.toFixed(2)}`;
+                                    }
+                                }
+                            }
                         }
                     },
                     scales: {
                         x: {
                             beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Supplier Volume Chart - for supplier tab
+        const supplierVolumeCtx = document.getElementById('supplierVolumeChart');
+        if (supplierVolumeCtx && activeTab === 'supplier') {
+            const supplierVolumeChart = new Chart(supplierVolumeCtx, {
+                type: 'bar',
+                data: {
+                    labels: supplierLabels,
+                    datasets: [{
+                        label: 'Purchase Volume',
+                        data: supplierVolumes,
+                        backgroundColor: 'rgba(234, 179, 8, 0.7)',
+                        borderColor: 'rgb(234, 179, 8)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Purchase Volume: $${context.raw.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Supplier Quality Chart - for supplier tab
+        const supplierQualityCtx = document.getElementById('supplierQualityChart');
+        if (supplierQualityCtx && activeTab === 'supplier') {
+            const supplierQualityChart = new Chart(supplierQualityCtx, {
+                type: 'bar',
+                data: {
+                    labels: supplierLabels,
+                    datasets: [{
+                        label: 'Reliability Score',
+                        data: supplierQuality,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Reliability: ${context.raw}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
                         }
                     }
                 }

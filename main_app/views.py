@@ -944,17 +944,88 @@ def low_stock_items(request):
 # ===== Reports =====
 @login_required
 def reports(request):
-    report_type = request.GET.get('type', 'inventory')
+    report_type = request.GET.get('type', 'overview')
     start_date = request.GET.get('start_date', (timezone.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
     end_date = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
+    low_stock = request.GET.get('low_stock', 'false').lower() == 'true'
     
-    # Prepare report data
-    if report_type == 'inventory':
-        report_data = Product.objects.annotate(
-            total_value=ExpressionWrapper(F('stock') * F('price'), output_field=DecimalField())
-        ).select_related('category').order_by('-total_value')
+    # Convert string dates to datetime objects
+    start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    # Overview data for all report types
+    total_products = Product.objects.count()
+    active_products = Product.objects.filter(is_active=True).count()
+    low_stock_count = Product.objects.filter(stock__lte=F('reorder_level')).count()
+    
+    # Calculate total inventory value
+    inventory_value_result = Product.objects.aggregate(
+        total_value=Sum(
+            ExpressionWrapper(F('stock') * F('price'), output_field=DecimalField())
+        )
+    )
+    total_inventory_value = inventory_value_result['total_value'] or 0
+    
+    # Calculate total sales
+    completed_orders = Order.objects.filter(status='completed')
+    total_sales = sum(order.total_amount for order in completed_orders) if completed_orders.exists() else 0
+    
+    # Get category data for charts
+    categories = Category.objects.annotate(
+        product_count=Count('products'),
+        value=Sum(
+            ExpressionWrapper(
+                F('products__stock') * F('products__price'),
+                output_field=DecimalField()
+            )
+        )
+    ).order_by('-value')
+    
+    # Prepare category chart data
+    category_labels = [cat.name for cat in categories[:5]]
+    category_values = [float(cat.value or 0) for cat in categories[:5]]
+    
+    # If there are other categories, add an "Others" category
+    if categories.count() > 5:
+        other_categories = categories[5:]
+        other_value = sum(float(cat.value or 0) for cat in other_categories)
+        category_labels.append('Others')
+        category_values.append(other_value)
+    
+    # Sales trend data (last 12 months)
+    sales_months = []
+    sales_values = []
+    
+    # Get data for each of the last 12 months
+    for i in range(11, -1, -1):
+        month_start = timezone.now() - timedelta(days=30 * i + timezone.now().day - 1)
+        month_end = month_start.replace(day=1) + timedelta(days=32)
+        month_end = month_end.replace(day=1) - timedelta(days=1)
         
-        # Summary
+        # Get orders for this month
+        month_orders = Order.objects.filter(
+            status='completed',
+            order_date__gte=month_start,
+            order_date__lte=month_end
+        )
+        
+        month_total = sum(order.total_amount for order in month_orders)
+        sales_months.append(month_start.strftime('%b'))
+        sales_values.append(float(month_total))
+    
+    # Specific report data based on type
+    if report_type == 'inventory':
+        query = Product.objects.annotate(
+            total_value=ExpressionWrapper(F('stock') * F('price'), output_field=DecimalField())
+        ).select_related('category')
+        
+        # Apply low stock filter if requested
+        if low_stock:
+            query = query.filter(stock__lte=F('reorder_level'))
+            
+        report_data = query.order_by('-total_value')
+        
+        # Summary for inventory report
         summary = {
             'total_products': report_data.count(),
             'total_value': sum(p.total_value for p in report_data),
@@ -962,43 +1033,159 @@ def reports(request):
             'out_of_stock_count': report_data.filter(stock=0).count()
         }
         
+        # Get top products by value
+        top_products = report_data.order_by('-total_value')[:10]
+        top_product_labels = [p.name for p in top_products]
+        top_product_values = [float(p.total_value) for p in top_products]
+        
     elif report_type == 'transactions':
         # Filter transactions by date
         report_data = StockTransaction.objects.filter(
-            date__gte=start_date,
-            date__lte=end_date
+            date__gte=start_date_obj,
+            date__lte=end_date_obj
         ).select_related('product', 'supplier', 'customer').order_by('-date')
         
         # Summary
         stock_in = report_data.filter(transaction_type='IN')
         stock_out = report_data.filter(transaction_type='OUT')
         
+        stock_in_value = sum(t.total_value for t in stock_in)
+        stock_out_value = sum(t.total_value for t in stock_out)
+        
         summary = {
             'total_transactions': report_data.count(),
             'stock_in_count': stock_in.count(),
             'stock_out_count': stock_out.count(),
-            'stock_in_value': sum(t.total_value for t in stock_in),
-            'stock_out_value': sum(t.total_value for t in stock_out)
+            'stock_in_value': stock_in_value,
+            'stock_out_value': stock_out_value,
+            'net_stock_value': stock_in_value - stock_out_value
         }
         
     elif report_type == 'sales':
         # Filter completed orders
         report_data = Order.objects.filter(
             status='completed',
-            order_date__gte=start_date,
-            order_date__lte=end_date
+            order_date__gte=start_date_obj,
+            order_date__lte=end_date_obj
         ).select_related('customer').prefetch_related('items__product').order_by('-order_date')
         
         # Summary
         summary = {
             'total_orders': report_data.count(),
-            'total_sales': sum(order.total_amount for order in report_data),
+            'total_sales': sum(order.total_amount for order in report_data) if report_data.count() > 0 else 0,
             'avg_order_value': sum(order.total_amount for order in report_data) / report_data.count() if report_data.count() > 0 else 0,
             'total_items_sold': sum(item.quantity for order in report_data for item in order.items.all())
         }
+        
+        # Get top selling products
+        top_selling_products = OrderItem.objects.filter(
+            order__status='completed',
+            order__order_date__gte=start_date_obj,
+            order__order_date__lte=end_date_obj
+        ).values('product__name').annotate(
+            units_sold=Sum('quantity'),
+            revenue=Sum(F('quantity') * F('price'))
+        ).order_by('-units_sold')[:5]
+        
+        top_product_labels = [p['product__name'] for p in top_selling_products]
+        top_product_values = [p['units_sold'] for p in top_selling_products]
     
+    elif report_type == 'supplier':
+        # Get all suppliers with their transaction data
+        suppliers = Supplier.objects.all()
+        
+        # Add metrics to each supplier
+        for supplier in suppliers:
+            # Count products associated with this supplier
+            supplier.product_count = supplier.products.count()
+            
+            # Calculate total purchase value
+            supplier_transactions = StockTransaction.objects.filter(
+                supplier=supplier,
+                transaction_type='IN',
+                date__gte=start_date_obj,
+                date__lte=end_date_obj
+            )
+            
+            total_purchases = sum(t.total_value for t in supplier_transactions)
+            supplier.total_purchases = total_purchases
+            
+            # Get last order date
+            last_transaction = supplier_transactions.order_by('-date').first()
+            supplier.last_order_date = last_transaction.date if last_transaction else None
+            
+            # Calculate reliability score (example metric)
+            on_time_deliveries = supplier_transactions.filter(notes__icontains='on time').count()
+            if supplier_transactions.count() > 0:
+                supplier.reliability = (on_time_deliveries / supplier_transactions.count()) * 100
+            else:
+                supplier.reliability = 0
+        
+        # Sort suppliers by total purchases (descending)
+        report_data = sorted(suppliers, key=lambda s: s.total_purchases, reverse=True)
+        
+        # Prepare chart data
+        top_suppliers = report_data[:5] if len(report_data) > 5 else report_data
+        supplier_labels = [s.name for s in top_suppliers]
+        supplier_volumes = [float(s.total_purchases) for s in top_suppliers]
+        supplier_quality = [s.reliability for s in top_suppliers]
+        
+        # Summary statistics
+        active_suppliers = len([s for s in suppliers if s.is_active])
+        total_purchases = sum(s.total_purchases for s in suppliers)
+        
+        summary = {
+            'total_suppliers': len(suppliers),
+            'active_suppliers': active_suppliers,
+            'total_purchases': total_purchases,
+            'avg_delivery_days': 3  # Placeholder, would need to calculate from actual delivery data
+        }
+    
+    else:  # overview
+        report_data = None
+        summary = {
+            'total_products': total_products,
+            'active_products': active_products,
+            'total_inventory_value': total_inventory_value,
+            'total_sales': total_sales,
+            'low_stock_count': low_stock_count
+        }
+        supplier_labels = []
+        supplier_volumes = []
+        supplier_quality = []
+    
+    # Export to PDF if requested
+    if request.GET.get('export') == 'pdf':
+        template_name = 'pdf/report.html'
+        context = {
+            'report_type': report_type,
+            'report_data': report_data,
+            'summary': summary,
+            'start_date': start_date,
+            'end_date': end_date,
+            'category_labels': category_labels,
+            'category_values': category_values,
+            'sales_months': sales_months,
+            'sales_values': sales_values,
+            'top_product_labels': top_product_labels if 'top_product_labels' in locals() else [],
+            'top_product_values': top_product_values if 'top_product_values' in locals() else [],
+            'supplier_labels': supplier_labels if 'supplier_labels' in locals() else [],
+            'supplier_volumes': supplier_volumes if 'supplier_volumes' in locals() else [],
+            'supplier_quality': supplier_quality if 'supplier_quality' in locals() else [],
+            'generated_on': timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        pdf = render_to_pdf(template_name, context)
+        if pdf:
+            response = HttpResponse(pdf, content_type='application/pdf')
+            filename = f"{report_type}_report_{timezone.now().strftime('%Y%m%d')}.pdf"
+            content = f"attachment; filename={filename}"
+            response['Content-Disposition'] = content
+            return response
+        return HttpResponse("Error generating PDF", status=400)
+        
     # Export to CSV if requested
-    if 'export' in request.GET:
+    elif request.GET.get('export') == 'csv':
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="{report_type}_report_{timezone.now().strftime("%Y%m%d")}.csv"'
         
@@ -1009,7 +1196,7 @@ def reports(request):
             for product in report_data:
                 writer.writerow([
                     product.name,
-                    product.sku,
+                    product.sku or '',
                     product.category.name,
                     ', '.join(s.name for s in product.suppliers.all()),
                     product.stock,
@@ -1025,9 +1212,9 @@ def reports(request):
                     transaction.get_transaction_type_display(),
                     transaction.product.name,
                     transaction.quantity,
-                    transaction.unit_price,
+                    transaction.unit_price or 0,
                     transaction.total_value,
-                    transaction.reference
+                    transaction.reference or ''
                 ])
                 
         elif report_type == 'sales':
@@ -1041,13 +1228,28 @@ def reports(request):
                     order.total_amount,
                     order.get_status_display()
                 ])
+                
+        elif report_type == 'supplier':
+            writer.writerow(['Supplier', 'Products', 'Total Purchases', 'Last Order', 'Status', 'Reliability'])
+            for supplier in report_data:
+                writer.writerow([
+                    supplier.name,
+                    supplier.product_count,
+                    supplier.total_purchases,
+                    supplier.last_order_date.strftime('%Y-%m-%d') if supplier.last_order_date else 'Never',
+                    'Active' if supplier.is_active else 'Inactive',
+                    f"{supplier.reliability:.1f}%"
+                ])
         
         return response
     
     # Pagination for web view
-    paginator = Paginator(report_data, 20)
-    page_number = request.GET.get('page')
-    report_page = paginator.get_page(page_number)
+    if report_data:
+        paginator = Paginator(report_data, 20)
+        page_number = request.GET.get('page')
+        report_page = paginator.get_page(page_number)
+    else:
+        report_page = None
     
     context = {
         'report_type': report_type,
@@ -1055,6 +1257,21 @@ def reports(request):
         'summary': summary,
         'start_date': start_date,
         'end_date': end_date,
+        'total_products': total_products,
+        'active_products': active_products,
+        'total_inventory_value': total_inventory_value,
+        'total_sales': total_sales,
+        'low_stock_count': low_stock_count,
+        'low_stock': low_stock,
+        'category_labels': json.dumps(category_labels),
+        'category_values': json.dumps(category_values),
+        'sales_months': json.dumps(sales_months),
+        'sales_values': json.dumps(sales_values),
+        'top_product_labels': json.dumps(top_product_labels) if 'top_product_labels' in locals() else json.dumps([]),
+        'top_product_values': json.dumps(top_product_values) if 'top_product_values' in locals() else json.dumps([]),
+        'supplier_labels': json.dumps(supplier_labels) if 'supplier_labels' in locals() else json.dumps([]),
+        'supplier_volumes': json.dumps(supplier_volumes) if 'supplier_volumes' in locals() else json.dumps([]),
+        'supplier_quality': json.dumps(supplier_quality) if 'supplier_quality' in locals() else json.dumps([]),
     }
     
     return render(request, 'report.html', context)

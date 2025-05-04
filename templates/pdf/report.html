@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ report_type|title }} Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin-bottom: 5px;
+            color: #0369a1;
+        }
+        .header p {
+            margin-top: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .summary {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f7f9fc;
+            border-radius: 5px;
+        }
+        .summary h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #0369a1;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .summary-item {
+            margin-bottom: 10px;
+        }
+        .summary-label {
+            font-weight: bold;
+            font-size: 13px;
+            color: #666;
+        }
+        .summary-value {
+            font-size: 18px;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background-color: #f7f9fc;
+            font-weight: bold;
+            color: #0369a1;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ report_type|title }} Report</h1>
+        <p>Generated on: {{ generated_on }}</p>
+        <p>Period: {{ start_date }} to {{ end_date }}</p>
+    </div>
+
+    <div class="summary">
+        <h3>Summary</h3>
+        <div class="summary-grid">
+            {% if report_type == 'inventory' %}
+                <div class="summary-item">
+                    <div class="summary-label">Total Products</div>
+                    <div class="summary-value">{{ summary.total_products }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Total Inventory Value</div>
+                    <div class="summary-value">${{ summary.total_value|floatformat:2 }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Low Stock Items</div>
+                    <div class="summary-value">{{ summary.low_stock_count }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Out of Stock Items</div>
+                    <div class="summary-value">{{ summary.out_of_stock_count }}</div>
+                </div>
+            {% elif report_type == 'transactions' %}
+                <div class="summary-item">
+                    <div class="summary-label">Total Transactions</div>
+                    <div class="summary-value">{{ summary.total_transactions }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Stock In Transactions</div>
+                    <div class="summary-value">{{ summary.stock_in_count }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Stock Out Transactions</div>
+                    <div class="summary-value">{{ summary.stock_out_count }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Stock In Value</div>
+                    <div class="summary-value">${{ summary.stock_in_value|floatformat:2 }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Stock Out Value</div>
+                    <div class="summary-value">${{ summary.stock_out_value|floatformat:2 }}</div>
+                </div>
+            {% elif report_type == 'sales' %}
+                <div class="summary-item">
+                    <div class="summary-label">Total Orders</div>
+                    <div class="summary-value">{{ summary.total_orders }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Total Sales</div>
+                    <div class="summary-value">${{ summary.total_sales|floatformat:2 }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Average Order Value</div>
+                    <div class="summary-value">${{ summary.avg_order_value|floatformat:2 }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Total Items Sold</div>
+                    <div class="summary-value">{{ summary.total_items_sold }}</div>
+                </div>
+            {% else %}
+                <div class="summary-item">
+                    <div class="summary-label">Total Products</div>
+                    <div class="summary-value">{{ summary.total_products }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Active Products</div>
+                    <div class="summary-value">{{ summary.active_products }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Total Inventory Value</div>
+                    <div class="summary-value">${{ summary.total_inventory_value|floatformat:2 }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Total Sales</div>
+                    <div class="summary-value">${{ summary.total_sales|floatformat:2 }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Low Stock Items</div>
+                    <div class="summary-value">{{ summary.low_stock_count }}</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if report_type == 'inventory' %}
+        <h3>Inventory Details</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>SKU</th>
+                    <th>Category</th>
+                    <th>Stock</th>
+                    <th>Price</th>
+                    <th>Total Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in report_data %}
+                    <tr>
+                        <td>{{ product.name }}</td>
+                        <td>{{ product.sku|default:"-" }}</td>
+                        <td>{{ product.category.name }}</td>
+                        <td>{{ product.stock }}</td>
+                        <td>${{ product.price|floatformat:2 }}</td>
+                        <td>${{ product.total_value|floatformat:2 }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% elif report_type == 'transactions' %}
+        <h3>Transaction Details</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Total Value</th>
+                    <th>Reference</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in report_data %}
+                    <tr>
+                        <td>{{ transaction.date|date:"Y-m-d H:i" }}</td>
+                        <td>{{ transaction.get_transaction_type_display }}</td>
+                        <td>{{ transaction.product.name }}</td>
+                        <td>{{ transaction.quantity }}</td>
+                        <td>${{ transaction.unit_price|default:"0"|floatformat:2 }}</td>
+                        <td>${{ transaction.total_value|floatformat:2 }}</td>
+                        <td>{{ transaction.reference|default:"-" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% elif report_type == 'sales' %}
+        <h3>Sales Details</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Items</th>
+                    <th>Total Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in report_data %}
+                    <tr>
+                        <td>{{ order.id }}</td>
+                        <td>{{ order.order_date|date:"Y-m-d H:i" }}</td>
+                        <td>{{ order.customer.name }}</td>
+                        <td>{{ order.item_count }}</td>
+                        <td>${{ order.total_amount|floatformat:2 }}</td>
+                        <td>{{ order.get_status_display }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <div class="footer">
+        <p>This report was generated from the Inventory Management System.</p>
+        <p>© {% now "Y" %} Your Company. All rights reserved.</p>
+    </div>
+</body>
+</html> 
