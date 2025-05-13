@@ -8,6 +8,7 @@ from django.core.paginator import Paginator
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy
+from django.contrib.auth import login
 import csv
 from datetime import datetime, timedelta
 import json
@@ -17,6 +18,7 @@ from .models import (
     Category, ActivityLog, LowStockAlert, Order, OrderItem, 
     Customer, Report, UserProfile, Notification
 )
+from .forms import CustomUserCreationForm
 
 # Import the render_to_pdf function from utils
 from .utils import render_to_pdf
@@ -1627,6 +1629,39 @@ def new_order(request):
     }
     
     return render(request, 'new_order.html', context)
+
+def register(request):
+    """View for user registration"""
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            
+            # Create a UserProfile for the new user
+            UserProfile.objects.create(user=user)
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=user,
+                action=f"New user registered: {user.username}",
+                date=timezone.now(),
+                content_type='user',
+                object_id=user.id
+            )
+            
+            # Auto-login the user after registration
+            login(request, user)
+            
+            messages.success(request, f"Account created successfully! Welcome, {user.username}!")
+            return redirect('dashboard')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+    else:
+        form = CustomUserCreationForm()
+    
+    return render(request, 'auth/register.html', {'form': form})
 
 
 
