@@ -1,0 +1,145 @@
+{% extends 'customer_portal/base.html' %}
+
+{% block title %}Shopping Cart - Customer Portal{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+    <div class="bg-blue-600 px-6 py-4">
+        <h2 class="text-xl font-bold text-white">Shopping Cart</h2>
+    </div>
+    
+    {% if cart_items %}
+    <div class="p-6">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Product
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Price
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Quantity
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Subtotal
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in cart_items %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    {% if item.product.image %}
+                                        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="h-10 w-10 rounded-full object-cover">
+                                    {% else %}
+                                        <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <i class="fas fa-box text-gray-400"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <a href="{% url 'customer_portal_product_detail' pk=item.product.id %}" class="text-sm font-medium text-gray-900 hover:text-blue-600">
+                                        {{ item.product.name }}
+                                    </a>
+                                    <div class="text-sm text-gray-500">{{ item.product.category.name }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${{ item.product.price }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <form method="post" action="{% url 'customer_portal_update_cart' %}" class="flex items-center">
+                                {% csrf_token %}
+                                <input type="hidden" name="product_id" value="{{ item.product.id }}">
+                                <input type="hidden" name="action" value="update">
+                                <select name="quantity" onchange="this.form.submit()" class="mr-2 border border-gray-300 rounded-md shadow-sm py-1 pl-2 pr-7 text-sm">
+                                    {% for i in "123456789"|make_list %}
+                                        {% if forloop.counter <= item.product.stock %}
+                                            <option value="{{ forloop.counter }}" {% if forloop.counter == item.quantity %}selected{% endif %}>
+                                                {{ forloop.counter }}
+                                            </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                                <span class="text-xs text-gray-500">
+                                    (Max: {{ item.product.stock }})
+                                </span>
+                            </form>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                            ${{ item.subtotal }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <form method="post" action="{% url 'customer_portal_update_cart' %}" class="inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="product_id" value="{{ item.product.id }}">
+                                <input type="hidden" name="action" value="remove">
+                                <button type="submit" class="text-red-600 hover:text-red-900">
+                                    <i class="fas fa-trash-alt"></i> Remove
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Cart Totals -->
+        <div class="mt-8 flex justify-end">
+            <div class="w-full md:w-1/3">
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-4">Cart Totals</h3>
+                    
+                    <div class="flex justify-between py-2 border-b border-gray-200">
+                        <span class="text-gray-600">Subtotal</span>
+                        <span class="font-medium">${{ total }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between py-2 border-b border-gray-200">
+                        <span class="text-gray-600">Shipping</span>
+                        <span class="font-medium">Free</span>
+                    </div>
+                    
+                    <div class="flex justify-between py-4 text-lg font-bold">
+                        <span>Total</span>
+                        <span>${{ total }}</span>
+                    </div>
+                    
+                    <a href="{% url 'customer_portal_checkout' %}" class="btn-primary w-full text-center mt-4">
+                        <i class="fas fa-shopping-cart mr-2"></i> Proceed to Checkout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="p-10 text-center">
+        <i class="fas fa-shopping-cart text-gray-400 text-5xl mb-4"></i>
+        <h3 class="text-xl font-semibold mb-2">Your cart is empty</h3>
+        <p class="text-gray-600 mb-6">Looks like you haven't added any products to your cart yet.</p>
+        <a href="{% url 'customer_portal_products' %}" class="btn-primary">
+            <i class="fas fa-shopping-bag mr-2"></i> Start Shopping
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% if cart_items %}
+<!-- Continue Shopping -->
+<div class="text-center mt-8">
+    <a href="{% url 'customer_portal_products' %}" class="text-blue-600 hover:underline">
+        <i class="fas fa-arrow-left mr-2"></i> Continue Shopping
+    </a>
+</div>
+{% endif %}
+{% endblock %} 

@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if product %}Edit Product{% else %}Add New Product{% endif %} - Inventory Management System{% endblock %}
+
+{% block breadcrumbs %}
+<li>
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <a href="{% url 'products' %}" class="ml-1 text-sm font-medium text-gray-700 hover:text-primary-600 md:ml-2">Products</a>
+    </div>
+</li>
+<li aria-current="page">
+    <div class="flex items-center">
+        <i class="fas fa-chevron-right text-gray-400 mx-1"></i>
+        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">{% if product %}Edit Product{% else %}Add Product{% endif %}</span>
+    </div>
+</li>
+{% endblock %}
+
+{% block page_title %}{% if product %}Edit Product: {{ product.name }}{% else %}Add New Product{% endif %}{% endblock %}
+{% block page_subtitle %}{% if product %}Update product information{% else %}Create a new product in your inventory{% endif %}{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        
+        <!-- Basic Information -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Product Name -->
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Product Name <span class="text-red-500">*</span></label>
+                    <input type="text" name="name" id="name" value="{{ product.name|default:'' }}" required
+                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    {% if form.name.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- SKU -->
+                <div>
+                    <label for="sku" class="block text-sm font-medium text-gray-700 mb-1">SKU <span class="text-red-500">*</span></label>
+                    <input type="text" name="sku" id="sku" value="{{ product.sku|default:'' }}" required
+                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    {% if form.sku.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.sku.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-gray-500">Unique identifier for this product</p>
+                </div>
+                
+                <!-- Category -->
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Category <span class="text-red-500">*</span></label>
+                    <select name="category" id="category" required
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        <option value="">Select a category</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" {% if product.category_id == category.id %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if form.category.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.category.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Suppliers -->
+                <div>
+                    <label for="suppliers" class="block text-sm font-medium text-gray-700 mb-1">Suppliers</label>
+                    <select name="suppliers" id="suppliers" multiple
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.id }}" {% if product and supplier.id in selected_suppliers %}selected{% endif %}>
+                            {{ supplier.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Hold Ctrl (or Cmd) to select multiple suppliers</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Inventory Information -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Inventory Information</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Initial Stock -->
+                <div>
+                    <label for="initial_stock" class="block text-sm font-medium text-gray-700 mb-1">Initial Stock <span class="text-red-500">*</span></label>
+                    <input type="number" name="initial_stock" id="initial_stock" value="0" min="0" required
+                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    <p class="mt-1 text-xs text-gray-500">Initial quantity in stock</p>
+                </div>
+                
+                <!-- Price -->
+                <div>
+                    <label for="price" class="block text-sm font-medium text-gray-700 mb-1">Price <span class="text-red-500">*</span></label>
+                    <div class="relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span class="text-gray-500 sm:text-sm">$</span>
+                        </div>
+                        <input type="number" name="price" id="price" value="{{ product.price|default:'0.00' }}" min="0" step="0.01" required
+                               class="w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    </div>
+                </div>
+                
+                <!-- Reorder Level -->
+                <div>
+                    <label for="reorder_level" class="block text-sm font-medium text-gray-700 mb-1">Reorder Level</label>
+                    <input type="number" name="reorder_level" id="reorder_level" value="{{ product.reorder_level|default:'5' }}" min="0"
+                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    <p class="mt-1 text-xs text-gray-500">Alert when stock falls below this level</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Product Details -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Product Details</h3>
+            
+            <div class="space-y-6">
+                <!-- Description -->
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" id="description" rows="4"
+                              class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">{{ product.description|default:'' }}</textarea>
+                </div>
+                
+                <!-- Product Image -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+                    
+                    {% if product.image %}
+                    <div class="mb-3">
+                        <div class="relative w-32 h-32 rounded-lg overflow-hidden border border-gray-200">
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-2">
+                        <div class="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                            <div class="space-y-1 text-center">
+                                <i class="fas fa-image mx-auto h-12 w-12 text-gray-400"></i>
+                                <div class="flex text-sm text-gray-600">
+                                    <label for="image" class="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500">
+                                        <span>Upload a file</span>
+                                        <input id="image" name="image" type="file" class="sr-only" accept="image/*">
+                                    </label>
+                                    <p class="pl-1">or drag and drop</p>
+                                </div>
+                                <p class="text-xs text-gray-500">PNG, JPG, GIF up to 2MB</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Form Actions -->
+        <div class="flex justify-end space-x-3">
+            <a href="{% url 'products' %}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                Cancel
+            </a>
+            <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                {% if product %}Update Product{% else %}Add Product{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %} 

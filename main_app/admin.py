@@ -16,7 +16,7 @@ from unfold.contrib.filters.admin import (
 
 from .models import (
     UserProfile, Category, Product, StockTransaction, StockIn, StockOut, 
-    Order, OrderItem, LowStockAlert, ActivityLog, Supplier, Report, Customer, Notification
+    Order, OrderItem, LowStockAlert, ActivityLog, Supplier, Report, Customer, Notification, CustomerPortalOrder, CustomerPortalOrderItem
 )
 
 @admin.register(UserProfile)
@@ -178,6 +178,27 @@ class NotificationAdmin(ModelAdmin):
     search_fields = ('title', 'message')
     date_hierarchy = 'created_at'
     readonly_fields = ('created_at',)
+
+class CustomerPortalOrderItemInline(TabularInline):
+    model = CustomerPortalOrderItem
+    extra = 0
+    readonly_fields = ('subtotal',)
+
+@admin.register(CustomerPortalOrder)
+class CustomerPortalOrderAdmin(ModelAdmin):
+    list_display = ('id', 'customer', 'order_date', 'status', 'total_amount', 'payment_status')
+    list_filter = ('status', 'payment_status', 'payment_method', ('order_date', RangeDateTimeFilter))
+    search_fields = ('customer__name', 'shipping_address', 'notes')
+    readonly_fields = ('order_date',)
+    
+    fieldsets = (
+        (None, {'fields': ('customer', 'order_date', 'status', 'payment_status', 'payment_method')}),
+        ('Contact & Shipping', {'fields': ('shipping_address', 'contact_phone')}),
+        ('Financial', {'fields': ('total_amount', 'tracking_number')}),
+        ('Notes', {'fields': ('notes',)})
+    )
+    
+    inlines = [CustomerPortalOrderItemInline]
 
 # Admin site customization
 admin.site.site_header = "StockMate Inventory Management"

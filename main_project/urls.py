@@ -5,7 +5,10 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('main_app.urls'))
+    path('api/', include('forecast.api.urls')),  # Forecast API endpoints - first
+    path('api/', include('main_app.api.urls')),  # Main API endpoints
+    path('', include('forecast.urls')),  # Forecast web views - first
+    path('', include('main_app.urls')),  # Main app URLs
 ]
 
 # Serve media files in development

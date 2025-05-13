@@ -1,0 +1,9 @@
+<!-- Product Actions -->
+<div class="flex space-x-2 mt-4">
+    <a href="{% url 'edit_product' pk=product.id %}" class="btn-primary">
+        <i class="fas fa-edit mr-2"></i> Edit Product
+    </a>
+    <a href="{% url 'forecast:product_forecast' product_id=product.id %}" class="btn-secondary">
+        <i class="fas fa-chart-line mr-2"></i> Demand Forecast
+    </a>
+</div> 

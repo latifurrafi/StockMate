@@ -16,8 +16,9 @@ import json
 from .models import (
     Product, StockTransaction, StockIn, StockOut, Supplier, 
     Category, ActivityLog, LowStockAlert, Order, OrderItem, 
-    Customer, Report, UserProfile, Notification
+    Customer, Report, UserProfile, Notification, CustomerPortalOrder, CustomerPortalOrderItem
 )
+from forecast.models import ForecastModel, DemandForecast
 from .forms import CustomUserCreationForm
 
 # Import the render_to_pdf function from utils
@@ -1662,6 +1663,435 @@ def register(request):
         form = CustomUserCreationForm()
     
     return render(request, 'auth/register.html', {'form': form})
+
+@login_required
+def product_forecast_view(request, product_id):
+    """View for displaying product demand forecasts - redirects to forecast app"""
+    from django.shortcuts import redirect
+    
+    # Get the referer to prevent redirect loops
+    referer = request.META.get('HTTP_REFERER', '')
+    if 'forecast' in referer:
+        # We're already in the forecast app, don't redirect again
+        from django.http import Http404
+        raise Http404("This URL should be handled by the forecast app")
+        
+    return redirect('forecast:product_forecast', product_id=product_id)
+
+# ===== Customer Portal =====
+def customer_portal_login(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        phone = request.POST.get('phone')
+        
+        try:
+            # Find customer by email and phone
+            customer = Customer.objects.get(email=email, phone=phone)
+            
+            # Store customer ID in session
+            request.session['customer_id'] = customer.id
+            request.session['customer_name'] = customer.name
+            
+            messages.success(request, f"Welcome back, {customer.name}!")
+            return redirect('customer_portal_home')
+            
+        except Customer.DoesNotExist:
+            messages.error(request, "No customer found with that email and phone number.")
+    
+    return render(request, 'customer_portal/login.html')
+
+def customer_portal_logout(request):
+    # Clear customer session data
+    if 'customer_id' in request.session:
+        del request.session['customer_id']
+    if 'customer_name' in request.session:
+        del request.session['customer_name']
+    
+    messages.success(request, "You have been logged out successfully.")
+    return redirect('customer_portal_login')
+
+def customer_portal_required(view_func):
+    """Decorator to check if customer is logged into the portal"""
+    def wrapped(request, *args, **kwargs):
+        if 'customer_id' not in request.session:
+            messages.warning(request, "Please log in to access the customer portal.")
+            return redirect('customer_portal_login')
+        return view_func(request, *args, **kwargs)
+    return wrapped
+
+@customer_portal_required
+def customer_portal_home(request):
+    customer_id = request.session['customer_id']
+    customer = get_object_or_404(Customer, id=customer_id)
+    
+    # Get recent orders
+    recent_orders = CustomerPortalOrder.objects.filter(customer=customer).order_by('-order_date')[:5]
+    
+    # Get featured/recommended products
+    featured_products = Product.objects.filter(is_active=True, stock__gt=0).order_by('?')[:6]
+    
+    context = {
+        'customer': customer,
+        'recent_orders': recent_orders,
+        'featured_products': featured_products,
+    }
+    
+    return render(request, 'customer_portal/home.html', context)
+
+@customer_portal_required
+def customer_portal_products(request):
+    # Get filters
+    search_query = request.GET.get('search', '')
+    category_id = request.GET.get('category', '')
+    sort_by = request.GET.get('sort', 'name')
+    
+    # Start with all active products with stock
+    products = Product.objects.filter(is_active=True, stock__gt=0)
+    
+    # Apply filters
+    if search_query:
+        products = products.filter(
+            Q(name__icontains=search_query) | 
+            Q(description__icontains=search_query)
+        )
+    
+    if category_id:
+        products = products.filter(category_id=category_id)
+    
+    # Apply sorting
+    if sort_by == 'price_low':
+        products = products.order_by('price')
+    elif sort_by == 'price_high':
+        products = products.order_by('-price')
+    elif sort_by == 'newest':
+        products = products.order_by('-created_at')
+    else:  # default to name
+        products = products.order_by('name')
+    
+    # Get all categories for filter dropdown
+    categories = Category.objects.all()
+    
+    # Paginate results
+    paginator = Paginator(products, 12)  # 12 products per page
+    page_number = request.GET.get('page')
+    products_page = paginator.get_page(page_number)
+    
+    context = {
+        'products': products_page,
+        'categories': categories,
+        'search_query': search_query,
+        'category_id': category_id,
+        'sort_by': sort_by,
+    }
+    
+    return render(request, 'customer_portal/products.html', context)
+
+@customer_portal_required
+def customer_portal_product_detail(request, pk):
+    product = get_object_or_404(Product, pk=pk, is_active=True)
+    
+    # Get related products in the same category
+    related_products = Product.objects.filter(
+        category=product.category, 
+        is_active=True
+    ).exclude(id=product.id).order_by('?')[:4]
+    
+    context = {
+        'product': product,
+        'related_products': related_products,
+    }
+    
+    return render(request, 'customer_portal/product_detail.html', context)
+
+@customer_portal_required
+def customer_portal_cart(request):
+    # Initialize cart if it doesn't exist in session
+    if 'cart' not in request.session:
+        request.session['cart'] = {}
+    
+    cart = request.session['cart']
+    cart_items = []
+    total = 0
+    
+    # Process cart items
+    for product_id, quantity in cart.items():
+        try:
+            product = Product.objects.get(id=product_id)
+            subtotal = float(product.price) * int(quantity)
+            total += subtotal
+            
+            cart_items.append({
+                'product': product,
+                'quantity': quantity,
+                'subtotal': subtotal
+            })
+        except Product.DoesNotExist:
+            # Remove invalid product from cart
+            del cart[product_id]
+            request.session.modified = True
+    
+    context = {
+        'cart_items': cart_items,
+        'total': total,
+        'cart_count': len(cart_items)
+    }
+    
+    return render(request, 'customer_portal/cart.html', context)
+
+@customer_portal_required
+def customer_portal_add_to_cart(request, pk):
+    if request.method == 'POST':
+        product = get_object_or_404(Product, pk=pk, is_active=True)
+        quantity = int(request.POST.get('quantity', 1))
+        
+        # Check if there's enough stock
+        if product.stock < quantity:
+            messages.error(request, f"Sorry, only {product.stock} units available for {product.name}.")
+            return redirect('customer_portal_product_detail', pk=pk)
+        
+        # Initialize cart if it doesn't exist
+        if 'cart' not in request.session:
+            request.session['cart'] = {}
+        
+        # Update cart
+        cart = request.session['cart']
+        product_id = str(product.id)
+        
+        if product_id in cart:
+            # Update quantity if product already in cart
+            cart[product_id] = int(cart[product_id]) + quantity
+        else:
+            # Add new product to cart
+            cart[product_id] = quantity
+        
+        # Mark session as modified
+        request.session.modified = True
+        
+        messages.success(request, f"Added {quantity} {product.name} to your cart.")
+        
+        # Redirect based on source
+        next_page = request.POST.get('next', 'customer_portal_cart')
+        return redirect(next_page)
+    
+    return redirect('customer_portal_products')
+
+@customer_portal_required
+def customer_portal_update_cart(request):
+    if request.method == 'POST':
+        product_id = request.POST.get('product_id')
+        action = request.POST.get('action')
+        
+        if 'cart' not in request.session:
+            request.session['cart'] = {}
+        
+        cart = request.session['cart']
+        
+        if action == 'remove' and product_id in cart:
+            # Remove item from cart
+            del cart[product_id]
+            request.session.modified = True
+            messages.success(request, "Item removed from cart.")
+        
+        elif action == 'update' and product_id in cart:
+            # Update quantity
+            quantity = int(request.POST.get('quantity', 1))
+            
+            # Validate quantity against stock
+            try:
+                product = Product.objects.get(id=product_id)
+                if quantity > product.stock:
+                    messages.error(request, f"Only {product.stock} units available.")
+                    quantity = product.stock
+                
+                if quantity > 0:
+                    cart[product_id] = quantity
+                    messages.success(request, "Cart updated successfully.")
+                else:
+                    del cart[product_id]
+                    messages.success(request, "Item removed from cart.")
+                
+                request.session.modified = True
+            except Product.DoesNotExist:
+                del cart[product_id]
+                request.session.modified = True
+    
+    return redirect('customer_portal_cart')
+
+@customer_portal_required
+def customer_portal_checkout(request):
+    customer_id = request.session['customer_id']
+    customer = get_object_or_404(Customer, id=customer_id)
+    
+    # Check if cart is empty
+    if 'cart' not in request.session or not request.session['cart']:
+        messages.warning(request, "Your cart is empty. Please add items before checking out.")
+        return redirect('customer_portal_products')
+    
+    if request.method == 'POST':
+        # Create order
+        shipping_address = request.POST.get('shipping_address')
+        contact_phone = request.POST.get('contact_phone')
+        notes = request.POST.get('notes', '')
+        payment_method = request.POST.get('payment_method', 'Credit Card')
+        
+        # Validate inputs
+        if not shipping_address or not contact_phone:
+            messages.error(request, "Please provide shipping address and contact phone.")
+            return redirect('customer_portal_checkout')
+        
+        # Create order
+        order = CustomerPortalOrder.objects.create(
+            customer=customer,
+            shipping_address=shipping_address,
+            contact_phone=contact_phone,
+            notes=notes,
+            payment_method=payment_method,
+            payment_status='completed'  # In a real system, this would be handled by payment gateway
+        )
+        
+        # Process cart items
+        cart = request.session['cart']
+        order_items = []
+        stock_transactions = []
+        
+        for product_id, quantity in cart.items():
+            try:
+                product = Product.objects.get(id=product_id)
+                
+                # Final stock check
+                if product.stock < int(quantity):
+                    messages.error(request, f"Sorry, only {product.stock} units available for {product.name}.")
+                    order.delete()  # Rollback order creation
+                    return redirect('customer_portal_cart')
+                
+                # Create order item
+                order_item = CustomerPortalOrderItem(
+                    order=order,
+                    product=product,
+                    quantity=int(quantity),
+                    price=product.price
+                )
+                order_items.append(order_item)
+                
+                # Create stock transaction (will be processed later)
+                stock_transaction = StockTransaction(
+                    product=product,
+                    quantity=int(quantity),
+                    transaction_type='OUT',
+                    reason='sale',
+                    reference=f"Portal Order #{order.id}",
+                    customer=customer,
+                    notes=f"Online order by {customer.name}"
+                )
+                stock_transactions.append(stock_transaction)
+                
+            except Product.DoesNotExist:
+                continue
+        
+        # Bulk create order items
+        CustomerPortalOrderItem.objects.bulk_create(order_items)
+        
+        # Process stock transactions
+        for transaction in stock_transactions:
+            transaction.save()
+        
+        # Update order total
+        order.update_total()
+        
+        # Convert to a regular Order for internal tracking
+        internal_order = Order.objects.create(
+            customer=customer,
+            status='pending',
+            notes=f"Online order via customer portal. Shipping to: {shipping_address}",
+            created_by=None  # No internal user created this
+        )
+        
+        # Copy items to internal order
+        for item in order_items:
+            OrderItem.objects.create(
+                order=internal_order,
+                product=item.product,
+                quantity=item.quantity,
+                price=item.price
+            )
+        
+        # Create notification for new order
+        notify_new_order(internal_order, None)
+        
+        # Clear cart
+        del request.session['cart']
+        request.session.modified = True
+        
+        # Redirect to confirmation page
+        messages.success(request, "Your order has been placed successfully!")
+        return redirect('customer_portal_order_confirmation', order_id=order.id)
+    
+    # For GET requests, prepare checkout form
+    cart = request.session['cart']
+    cart_items = []
+    total = 0
+    
+    for product_id, quantity in cart.items():
+        try:
+            product = Product.objects.get(id=product_id)
+            subtotal = float(product.price) * int(quantity)
+            total += subtotal
+            
+            cart_items.append({
+                'product': product,
+                'quantity': quantity,
+                'subtotal': subtotal
+            })
+        except Product.DoesNotExist:
+            del cart[product_id]
+            request.session.modified = True
+    
+    context = {
+        'customer': customer,
+        'cart_items': cart_items,
+        'total': total,
+        'cart_count': len(cart_items)
+    }
+    
+    return render(request, 'customer_portal/checkout.html', context)
+
+@customer_portal_required
+def customer_portal_order_confirmation(request, order_id):
+    customer_id = request.session['customer_id']
+    order = get_object_or_404(CustomerPortalOrder, id=order_id, customer_id=customer_id)
+    
+    context = {
+        'order': order,
+    }
+    
+    return render(request, 'customer_portal/order_confirmation.html', context)
+
+@customer_portal_required
+def customer_portal_orders(request):
+    customer_id = request.session['customer_id']
+    orders = CustomerPortalOrder.objects.filter(customer_id=customer_id).order_by('-order_date')
+    
+    # Pagination
+    paginator = Paginator(orders, 10)
+    page_number = request.GET.get('page')
+    orders_page = paginator.get_page(page_number)
+    
+    context = {
+        'orders': orders_page,
+    }
+    
+    return render(request, 'customer_portal/order.html', context)
+
+@customer_portal_required
+def customer_portal_order_detail(request, order_id):
+    customer_id = request.session['customer_id']
+    order = get_object_or_404(CustomerPortalOrder, id=order_id, customer_id=customer_id)
+    
+    context = {
+        'order': order,
+    }
+    
+    return render(request, 'customer_portal/orders_details.html', context)
 
 
 

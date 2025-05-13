@@ -1,0 +1,186 @@
+{% extends 'customer_portal/base.html' %}
+
+{% block title %}Order Confirmation - Customer Portal{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+    <div class="bg-green-600 px-6 py-4">
+        <h2 class="text-xl font-bold text-white">Order Confirmed!</h2>
+    </div>
+    
+    <div class="p-6 text-center">
+        <div class="mb-6">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full">
+                <i class="fas fa-check-circle text-green-600 text-5xl"></i>
+            </div>
+        </div>
+        
+        <h3 class="text-2xl font-bold mb-2">Thank you for your order!</h3>
+        <p class="text-gray-600 mb-6">Order #{{ order.id }} has been placed successfully.</p>
+        
+        <div class="flex justify-center space-x-4 mb-8">
+            <a href="{% url 'customer_portal_order_detail' order_id=order.id %}" class="btn-primary">
+                <i class="fas fa-clipboard-list mr-2"></i> View Order Details
+            </a>
+            <a href="{% url 'customer_portal_products' %}" class="btn-secondary">
+                <i class="fas fa-shopping-bag mr-2"></i> Continue Shopping
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Order Summary -->
+<div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+    <div class="bg-blue-600 px-6 py-4">
+        <h2 class="text-lg font-bold text-white">Order Summary</h2>
+    </div>
+    
+    <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Order Details -->
+            <div>
+                <h3 class="text-lg font-semibold mb-4">Order Details</h3>
+                
+                <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Order Number:</p>
+                            <p class="font-medium">#{{ order.id }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Date:</p>
+                            <p class="font-medium">{{ order.order_date|date:"M d, Y" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Status:</p>
+                            <p>
+                                <span class="px-2 py-1 text-xs rounded-full 
+                                    {% if order.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                    {% elif order.status == 'processing' %}bg-blue-100 text-blue-800
+                                    {% elif order.status == 'shipped' %}bg-purple-100 text-purple-800
+                                    {% elif order.status == 'delivered' %}bg-green-100 text-green-800
+                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Payment Method:</p>
+                            <p class="font-medium">{{ order.payment_method }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3 class="text-lg font-semibold mb-4">Shipping Information</h3>
+                
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <address class="not-italic">
+                        <p class="font-medium">{{ order.customer.name }}</p>
+                        <p class="text-gray-600">{{ order.shipping_address|linebreaksbr }}</p>
+                        <p class="text-gray-600">Phone: {{ order.contact_phone }}</p>
+                    </address>
+                    
+                    {% if order.notes %}
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <p class="text-sm text-gray-600">Order Notes:</p>
+                        <p>{{ order.notes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Order Items -->
+            <div>
+                <h3 class="text-lg font-semibold mb-4">Items Ordered</h3>
+                
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="divide-y divide-gray-200">
+                        {% for item in order.items.all %}
+                        <div class="p-4 flex">
+                            <div class="flex-shrink-0 w-16 h-16">
+                                {% if item.product.image %}
+                                    <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="w-16 h-16 object-cover rounded">
+                                {% else %}
+                                    <div class="w-16 h-16 bg-gray-200 flex items-center justify-center rounded">
+                                        <i class="fas fa-box text-gray-400"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="ml-4 flex-1">
+                                <h4 class="text-sm font-medium">{{ item.product.name }}</h4>
+                                <p class="text-xs text-gray-500">{{ item.product.category.name }}</p>
+                                <div class="flex justify-between mt-1">
+                                    <p class="text-sm text-gray-500">
+                                        {{ item.quantity }} × ${{ item.price }}
+                                    </p>
+                                    <p class="text-sm font-medium">${{ item.subtotal }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="bg-gray-50 p-4">
+                        <div class="flex justify-between py-2">
+                            <span class="text-gray-600">Subtotal</span>
+                            <span class="font-medium">${{ order.total_amount }}</span>
+                        </div>
+                        
+                        <div class="flex justify-between py-2">
+                            <span class="text-gray-600">Shipping</span>
+                            <span class="font-medium">Free</span>
+                        </div>
+                        
+                        <div class="flex justify-between py-2 text-lg font-bold border-t border-gray-200 mt-2 pt-2">
+                            <span>Total</span>
+                            <span>${{ order.total_amount }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Next Steps -->
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="bg-blue-600 px-6 py-4">
+        <h2 class="text-lg font-bold text-white">What's Next?</h2>
+    </div>
+    
+    <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="text-center p-4">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-3">
+                    <i class="fas fa-envelope text-blue-600 text-xl"></i>
+                </div>
+                <h3 class="font-semibold mb-2">Confirmation Email</h3>
+                <p class="text-gray-600 text-sm">
+                    We've sent a confirmation email to {{ order.customer.email }} with all your order details.
+                </p>
+            </div>
+            
+            <div class="text-center p-4">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-3">
+                    <i class="fas fa-box text-blue-600 text-xl"></i>
+                </div>
+                <h3 class="font-semibold mb-2">Order Processing</h3>
+                <p class="text-gray-600 text-sm">
+                    We're preparing your items for shipment. You'll receive an update when your order ships.
+                </p>
+            </div>
+            
+            <div class="text-center p-4">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-3">
+                    <i class="fas fa-question-circle text-blue-600 text-xl"></i>
+                </div>
+                <h3 class="font-semibold mb-2">Need Help?</h3>
+                <p class="text-gray-600 text-sm">
+                    If you have any questions about your order, please contact our customer support.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

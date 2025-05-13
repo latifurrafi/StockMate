@@ -21,6 +21,7 @@ urlpatterns = [
     path('products/add/', views.add_product, name='add_product'),
     path('products/<int:pk>/', views.product_detail, name='product_detail'),
     path('products/<int:pk>/edit/', views.edit_product, name='edit_product'),
+    path('products/<int:product_id>/forecast/', views.product_forecast_view, name='product_forecast'),
     path('api/products/<int:product_id>/info/', views.get_product_info, name='get_product_info'),
     
     # Categories
@@ -67,4 +68,20 @@ urlpatterns = [
     path('notifications/mark-read/<int:pk>/', views.mark_notification_read, name='mark_notification_read'),
     path('notifications/delete/<int:pk>/', views.delete_notification, name='delete_notification'),
     path('api/notifications/unread-count/', views.get_unread_notification_count, name='get_unread_notification_count'),
+]
+
+# Customer Portal URLs
+urlpatterns += [
+    path('portal/', views.customer_portal_login, name='customer_portal_login'),
+    path('portal/logout/', views.customer_portal_logout, name='customer_portal_logout'),
+    path('portal/home/', views.customer_portal_home, name='customer_portal_home'),
+    path('portal/products/', views.customer_portal_products, name='customer_portal_products'),
+    path('portal/products/<int:pk>/', views.customer_portal_product_detail, name='customer_portal_product_detail'),
+    path('portal/cart/', views.customer_portal_cart, name='customer_portal_cart'),
+    path('portal/add-to-cart/<int:pk>/', views.customer_portal_add_to_cart, name='customer_portal_add_to_cart'),
+    path('portal/update-cart/', views.customer_portal_update_cart, name='customer_portal_update_cart'),
+    path('portal/checkout/', views.customer_portal_checkout, name='customer_portal_checkout'),
+    path('portal/order-confirmation/<int:order_id>/', views.customer_portal_order_confirmation, name='customer_portal_order_confirmation'),
+    path('portal/orders/', views.customer_portal_orders, name='customer_portal_orders'),
+    path('portal/orders/<int:order_id>/', views.customer_portal_order_detail, name='customer_portal_order_detail'),
 ]

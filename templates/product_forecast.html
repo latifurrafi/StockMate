@@ -1,0 +1,608 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Demand Forecast - {{ product.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 50vh;
+        width: 100%;
+    }
+    
+    .card-hover:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transform: translateY(-2px);
+        transition: all 0.2s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">
+                Demand Forecast: {{ product.name }}
+            </h1>
+            <p class="text-gray-600">
+                <a href="{% url 'product_detail' pk=product.id %}" class="text-primary-600 hover:underline">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Product Details
+                </a>
+            </p>
+        </div>
+        
+        <div class="mt-4 md:mt-0 space-x-2">
+            <button id="refreshForecastBtn" class="btn-primary">
+                <i class="fas fa-sync-alt mr-2"></i> Refresh Forecast
+            </button>
+            <button id="downloadDataBtn" class="btn-secondary">
+                <i class="fas fa-download mr-2"></i> Download CSV
+            </button>
+        </div>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-blue-500 card-hover">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500">Current Stock</p>
+                    <p class="text-xl font-bold">{{ product.stock }}</p>
+                </div>
+                <div class="text-blue-500 text-2xl">
+                    <i class="fas fa-box"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-yellow-500 card-hover">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500">Reorder Level</p>
+                    <p class="text-xl font-bold">{{ product.reorder_level }}</p>
+                </div>
+                <div class="text-yellow-500 text-2xl">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500 card-hover" id="avg-demand-card">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500">Avg. Daily Demand</p>
+                    <p class="text-xl font-bold" id="avg-demand">--</p>
+                </div>
+                <div class="text-green-500 text-2xl">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-red-500 card-hover" id="days-remaining-card">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500">Days Until Stockout</p>
+                    <p class="text-xl font-bold" id="days-remaining">--</p>
+                </div>
+                <div class="text-red-500 text-2xl">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chart Section -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h2 class="text-lg font-bold mb-4">Demand Forecast Chart</h2>
+        
+        {% if not has_forecast_data %}
+        <div class="p-4 bg-yellow-50 text-yellow-800 rounded-md" id="no-forecast-message">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-yellow-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm">
+                        {% if has_model %}
+                        No forecast data available yet. Click "Refresh Forecast" to generate a forecast.
+                        {% else %}
+                        No forecast model exists for this product yet. Click "Refresh Forecast" to create one.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="chart-container">
+            <canvas id="forecastChart"></canvas>
+        </div>
+        
+        <div class="mt-4 text-sm text-gray-500">
+            <p>
+                <i class="fas fa-info-circle mr-1"></i>
+                This forecast is based on historical sales data. The shaded area represents the 95% confidence interval.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Historical Data Table -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h2 class="text-lg font-bold mb-4">Recent Transactions</h2>
+        
+        {% if transactions %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {{ transaction.date|date:"M d, Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if transaction.transaction_type == 'IN' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ transaction.get_transaction_type_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {{ transaction.quantity }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ transaction.reference|default:"N/A" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-4 bg-gray-50 text-gray-800 rounded-md">
+            <p>No transaction history found for this product.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div id="loadingModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
+        <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
+        <h2 class="text-center text-gray-800 text-xl font-semibold">Processing...</h2>
+        <p class="text-center text-gray-600" id="loadingMessage">Generating forecast. This may take a few moments.</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const productId = {{ product.id }};
+        let forecastChart = null;
+        
+        // Initialize the chart (empty at first)
+        initChart();
+        
+        // Load forecast data when page loads
+        loadForecastData();
+        
+        // Helper function to show alerts
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alert-container');
+            if (!alertContainer) {
+                // Create alert container if it doesn't exist
+                const container = document.createElement('div');
+                container.id = 'alert-container';
+                container.className = 'fixed top-4 right-4 z-50 max-w-md';
+                document.body.appendChild(container);
+            }
+            
+            const alert = document.createElement('div');
+            alert.className = `mb-4 p-4 rounded-lg shadow-md transition-all transform duration-300 ease-in-out ${getAlertClass(type)}`;
+            alert.innerHTML = `
+                <div class="flex items-center">
+                    <span class="mr-2">${getAlertIcon(type)}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.getElementById('alert-container').appendChild(alert);
+            
+            // Animate in
+            setTimeout(() => {
+                alert.classList.add('translate-x-0');
+                alert.classList.remove('translate-x-full');
+            }, 10);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                alert.classList.add('opacity-0');
+                setTimeout(() => {
+                    alert.remove();
+                }, 300);
+            }, 5000);
+        }
+        
+        function getAlertClass(type) {
+            const classes = {
+                'success': 'bg-green-100 text-green-800 border-l-4 border-green-500',
+                'danger': 'bg-red-100 text-red-800 border-l-4 border-red-500',
+                'warning': 'bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500',
+                'info': 'bg-blue-100 text-blue-800 border-l-4 border-blue-500'
+            };
+            return classes[type] || classes.info;
+        }
+        
+        function getAlertIcon(type) {
+            const icons = {
+                'success': '<i class="fas fa-check-circle"></i>',
+                'danger': '<i class="fas fa-exclamation-circle"></i>',
+                'warning': '<i class="fas fa-exclamation-triangle"></i>',
+                'info': '<i class="fas fa-info-circle"></i>'
+            };
+            return icons[type] || icons.info;
+        }
+        
+        // Handle refresh button click
+        document.getElementById('refreshForecastBtn').addEventListener('click', function() {
+            showLoading('Generating new forecast. This may take a minute...');
+            
+            // Call the API to train a new model
+            fetch(`/api/products/${productId}/forecast/train/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    days: 90
+                })
+            })
+            .then(response => {
+                // Get the JSON data even if response is not OK
+                return response.json().then(data => ({
+                    status: response.status,
+                    data: data
+                }));
+            })
+            .then(result => {
+                if (result.status === 200) {
+                    // Success - load the updated forecast data
+                    hideLoading();
+                    loadForecastData();
+                    showAlert('Forecast updated successfully', 'success');
+                } else {
+                    // Error occurred
+                    hideLoading();
+                    console.error('Error training model:', result.data);
+                    showAlert(result.data.message || 'Error generating forecast', 'danger');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Network error:', error);
+                showAlert('Network error occurred. Please try again.', 'danger');
+            });
+        });
+        
+        // Handle download button click
+        document.getElementById('downloadDataBtn').addEventListener('click', function() {
+            // Get forecast data
+            fetch(`/api/products/${productId}/forecast/?days=90`)
+                .then(response => response.json())
+                .then(data => {
+                    // Create CSV content
+                    let csvContent = 'data:text/csv;charset=utf-8,';
+                    csvContent += 'Date,Forecast,Lower Bound,Upper Bound\n';
+                    
+                    for (let i = 0; i < data.dates.length; i++) {
+                        csvContent += `${data.dates[i]},${data.forecast_values[i]},${data.lower_bounds[i]},${data.upper_bounds[i]}\n`;
+                    }
+                    
+                    // Create download link
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', encodedUri);
+                    link.setAttribute('download', `forecast_${productId}_${new Date().toISOString().split('T')[0]}.csv`);
+                    document.body.appendChild(link);
+                    
+                    // Trigger download
+                    link.click();
+                    document.body.removeChild(link);
+                })
+                .catch(error => {
+                    console.error('Error downloading data:', error);
+                    alert('An error occurred while preparing the download.');
+                });
+        });
+        
+        // Load forecast data from API
+        function loadForecastData() {
+            showLoading('Loading forecast data...');
+            
+            fetch(`/api/products/${productId}/forecast/?days=90`)
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    
+                    // Update the chart
+                    updateChart(data);
+                    
+                    // Update stats cards
+                    updateStatsCards(data);
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error('Error loading forecast data:', error);
+                });
+        }
+        
+        // Initialize empty chart
+        function initChart() {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Historical Demand',
+                            data: [],
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            pointRadius: 3,
+                            pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Forecasted Demand',
+                            data: [],
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            pointRadius: 2,
+                            borderWidth: 2,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Upper Bound',
+                            data: [],
+                            borderColor: 'rgba(54, 162, 235, 0.3)',
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            borderWidth: 1,
+                            fill: false
+                        },
+                        {
+                            label: 'Lower Bound',
+                            data: [],
+                            borderColor: 'rgba(54, 162, 235, 0.3)',
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            borderWidth: 1,
+                            fill: '-1'
+                        },
+                        {
+                            label: 'Current Stock',
+                            data: [],
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            borderDash: [10, 5],
+                            fill: false
+                        },
+                        {
+                            label: 'Reorder Level',
+                            data: [],
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            borderDash: [10, 5],
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Product Demand Forecast'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Units'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update chart with forecast data
+        function updateChart(data) {
+            // Combine historical and forecast dates
+            const allDates = [...(data.historical_dates || []), ...data.dates];
+            
+            // Create datasets
+            const historicalData = [];
+            const forecastData = [];
+            const upperBoundData = [];
+            const lowerBoundData = [];
+            const currentStockData = [];
+            const reorderLevelData = [];
+            
+            // Add historical data (with nulls for forecast period)
+            if (data.historical_dates && data.historical_values) {
+                data.historical_dates.forEach((date, i) => {
+                    historicalData.push({
+                        x: date,
+                        y: data.historical_values[i]
+                    });
+                });
+                
+                // Fill with nulls for forecast period
+                data.dates.forEach(() => {
+                    historicalData.push(null);
+                });
+            }
+            
+            // Add forecast data (with nulls for historical period)
+            if (data.historical_dates && data.historical_values) {
+                data.historical_dates.forEach(() => {
+                    forecastData.push(null);
+                    upperBoundData.push(null);
+                    lowerBoundData.push(null);
+                });
+            }
+            
+            // Add forecast values
+            data.dates.forEach((date, i) => {
+                forecastData.push({
+                    x: date,
+                    y: data.forecast_values[i]
+                });
+                upperBoundData.push({
+                    x: date,
+                    y: data.upper_bounds[i]
+                });
+                lowerBoundData.push({
+                    x: date,
+                    y: data.lower_bounds[i]
+                });
+            });
+            
+            // Add current stock line
+            allDates.forEach(() => {
+                currentStockData.push(data.current_stock);
+                reorderLevelData.push(data.reorder_level);
+            });
+            
+            // Update chart data
+            forecastChart.data.labels = allDates;
+            forecastChart.data.datasets[0].data = historicalData;
+            forecastChart.data.datasets[1].data = forecastData;
+            forecastChart.data.datasets[2].data = upperBoundData;
+            forecastChart.data.datasets[3].data = lowerBoundData;
+            forecastChart.data.datasets[4].data = currentStockData;
+            forecastChart.data.datasets[5].data = reorderLevelData;
+            
+            forecastChart.update();
+        }
+        
+        // Update stats cards
+        function updateStatsCards(data) {
+            // Calculate average daily demand
+            if (data.forecast_values && data.forecast_values.length > 0) {
+                const avgDemand = data.forecast_values.reduce((sum, value) => sum + value, 0) / data.forecast_values.length;
+                document.getElementById('avg-demand').textContent = avgDemand.toFixed(2);
+                
+                // Calculate days until stockout
+                const daysRemaining = data.current_stock / avgDemand;
+                const daysRemainingElement = document.getElementById('days-remaining');
+                
+                if (daysRemaining > 30) {
+                    daysRemainingElement.textContent = '30+ days';
+                    daysRemainingElement.parentElement.parentElement.parentElement.classList.remove('border-red-500');
+                    daysRemainingElement.parentElement.parentElement.parentElement.classList.add('border-green-500');
+                    daysRemainingElement.parentElement.parentElement.querySelector('div:last-child').classList.remove('text-red-500');
+                    daysRemainingElement.parentElement.parentElement.querySelector('div:last-child').classList.add('text-green-500');
+                } else {
+                    daysRemainingElement.textContent = Math.round(daysRemaining) + ' days';
+                    
+                    if (daysRemaining < 7) {
+                        daysRemainingElement.parentElement.parentElement.parentElement.classList.add('border-red-500');
+                        daysRemainingElement.parentElement.parentElement.querySelector('div:last-child').classList.add('text-red-500');
+                    } else {
+                        daysRemainingElement.parentElement.parentElement.parentElement.classList.remove('border-red-500');
+                        daysRemainingElement.parentElement.parentElement.parentElement.classList.add('border-yellow-500');
+                        daysRemainingElement.parentElement.parentElement.querySelector('div:last-child').classList.remove('text-red-500');
+                        daysRemainingElement.parentElement.parentElement.querySelector('div:last-child').classList.add('text-yellow-500');
+                    }
+                }
+            }
+        }
+        
+        // Show loading modal
+        function showLoading(message = 'Loading...') {
+            document.getElementById('loadingMessage').textContent = message;
+            document.getElementById('loadingModal').classList.remove('hidden');
+        }
+        
+        // Hide loading modal
+        function hideLoading() {
+            document.getElementById('loadingModal').classList.add('hidden');
+        }
+        
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    });
+</script>
+
+<style>
+    .loader {
+        border-top-color: #3498db;
+        -webkit-animation: spinner 1.5s linear infinite;
+        animation: spinner 1.5s linear infinite;
+    }
+
+    @-webkit-keyframes spinner {
+        0% { -webkit-transform: rotate(0deg); }
+        100% { -webkit-transform: rotate(360deg); }
+    }
+
+    @keyframes spinner {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %} 

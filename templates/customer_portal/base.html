@@ -1,0 +1,252 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}StockMate Customer Portal{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <style>
+        .btn-primary {
+            @apply inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:border-blue-800 focus:ring ring-blue-300 disabled:opacity-25 transition ease-in-out duration-150;
+        }
+        .btn-secondary {
+            @apply inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-800 focus:outline-none focus:border-gray-800 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150;
+        }
+        .btn-danger {
+            @apply inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 active:bg-red-800 focus:outline-none focus:border-red-800 focus:ring ring-red-300 disabled:opacity-25 transition ease-in-out duration-150;
+        }
+        .form-input {
+            @apply mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50;
+        }
+        .form-label {
+            @apply block text-sm font-medium text-gray-700 mb-1;
+        }
+        
+        /* Responsive improvements */
+        @media (max-width: 640px) {
+            .mobile-menu-hidden {
+                display: none;
+            }
+        }
+        
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Accessibility improvements */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-white shadow sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <a href="{% url 'customer_portal_home' %}" class="text-2xl font-bold text-blue-600 flex items-center">
+                        <i class="fas fa-box-open mr-2"></i>
+                        <span>StockMate</span>
+                        <span class="ml-2 text-sm text-gray-600 hidden sm:inline">Customer Portal</span>
+                    </a>
+                </div>
+                
+                <!-- Mobile menu button -->
+                <div class="sm:hidden">
+                    <button type="button" id="mobile-menu-button" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                        <i class="fas fa-bars text-xl"></i>
+                        <span class="sr-only">Open menu</span>
+                    </button>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <nav class="hidden sm:flex items-center space-x-6">
+                    {% if request.session.customer_id %}
+                        <a href="{% url 'customer_portal_products' %}" class="text-gray-700 hover:text-blue-600 transition-colors duration-150">
+                            <i class="fas fa-shopping-bag mr-1"></i> Shop
+                        </a>
+                        <a href="{% url 'customer_portal_orders' %}" class="text-gray-700 hover:text-blue-600 transition-colors duration-150">
+                            <i class="fas fa-clipboard-list mr-1"></i> My Orders
+                        </a>
+                        <a href="{% url 'customer_portal_cart' %}" class="text-gray-700 hover:text-blue-600 transition-colors duration-150 relative">
+                            <i class="fas fa-shopping-cart mr-1"></i> Cart
+                            {% if request.session.cart %}
+                                <span class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                    {{ request.session.cart|length }}
+                                </span>
+                            {% endif %}
+                        </a>
+                        <span class="text-gray-600 hidden md:inline">{{ request.session.customer_name }}</span>
+                        <a href="{% url 'customer_portal_logout' %}" class="text-sm text-red-600 hover:text-red-800 transition-colors duration-150">
+                            <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                        </a>
+                    {% else %}
+                        <a href="{% url 'customer_portal_login' %}" class="text-blue-600 hover:text-blue-800 transition-colors duration-150">
+                            <i class="fas fa-sign-in-alt mr-1"></i> Login
+                        </a>
+                    {% endif %}
+                </nav>
+            </div>
+            
+            <!-- Mobile Navigation -->
+            <div id="mobile-menu" class="sm:hidden hidden mt-4 pb-2 border-t border-gray-200 pt-2 fade-in">
+                <nav class="flex flex-col space-y-3">
+                    {% if request.session.customer_id %}
+                        <a href="{% url 'customer_portal_products' %}" class="text-gray-700 hover:text-blue-600 py-2 transition-colors duration-150">
+                            <i class="fas fa-shopping-bag mr-1"></i> Shop
+                        </a>
+                        <a href="{% url 'customer_portal_orders' %}" class="text-gray-700 hover:text-blue-600 py-2 transition-colors duration-150">
+                            <i class="fas fa-clipboard-list mr-1"></i> My Orders
+                        </a>
+                        <a href="{% url 'customer_portal_cart' %}" class="text-gray-700 hover:text-blue-600 py-2 transition-colors duration-150 relative inline-block">
+                            <i class="fas fa-shopping-cart mr-1"></i> Cart
+                            {% if request.session.cart %}
+                                <span class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                    {{ request.session.cart|length }}
+                                </span>
+                            {% endif %}
+                        </a>
+                        <div class="flex justify-between items-center py-2">
+                            <span class="text-gray-600">{{ request.session.customer_name }}</span>
+                            <a href="{% url 'customer_portal_logout' %}" class="text-sm text-red-600 hover:text-red-800 transition-colors duration-150">
+                                <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                            </a>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'customer_portal_login' %}" class="text-blue-600 hover:text-blue-800 py-2 transition-colors duration-150">
+                            <i class="fas fa-sign-in-alt mr-1"></i> Login
+                        </a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Messages -->
+    {% if messages %}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        {% for message in messages %}
+        <div class="rounded-md p-4 mb-4 {% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'error' %}bg-red-100 text-red-700{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-700{% else %}bg-blue-100 text-blue-700{% endif %} flex items-center justify-between">
+            <div class="flex items-center">
+                <i class="mr-3 {% if message.tags == 'success' %}fas fa-check-circle text-green-500{% elif message.tags == 'error' %}fas fa-exclamation-circle text-red-500{% elif message.tags == 'warning' %}fas fa-exclamation-triangle text-yellow-500{% else %}fas fa-info-circle text-blue-500{% endif %}"></i>
+                <p>{{ message }}</p>
+            </div>
+            <button type="button" class="message-close" aria-label="Close message">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Content -->
+    <main class="flex-grow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="bg-white shadow-inner py-6 mt-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">StockMate</h3>
+                    <p class="text-gray-600 text-sm">Your one-stop shop for all your needs.</p>
+                    <div class="mt-4 flex space-x-3">
+                        <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors duration-150">
+                            <i class="fab fa-facebook-f"></i>
+                            <span class="sr-only">Facebook</span>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-blue-400 transition-colors duration-150">
+                            <i class="fab fa-twitter"></i>
+                            <span class="sr-only">Twitter</span>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-pink-600 transition-colors duration-150">
+                            <i class="fab fa-instagram"></i>
+                            <span class="sr-only">Instagram</span>
+                        </a>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Quick Links</h3>
+                    <ul class="space-y-1 text-sm">
+                        <li><a href="{% url 'customer_portal_products' %}" class="text-blue-600 hover:underline">Products</a></li>
+                        <li><a href="{% url 'customer_portal_orders' %}" class="text-blue-600 hover:underline">My Orders</a></li>
+                        <li><a href="{% url 'customer_portal_cart' %}" class="text-blue-600 hover:underline">Cart</a></li>
+                        <li><a href="#" class="text-blue-600 hover:underline">About Us</a></li>
+                        <li><a href="#" class="text-blue-600 hover:underline">Privacy Policy</a></li>
+                        <li><a href="#" class="text-blue-600 hover:underline">Terms of Service</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Contact Us</h3>
+                    <p class="text-gray-600 text-sm">
+                        <i class="fas fa-envelope mr-2"></i> support@stockmate.com<br>
+                        <i class="fas fa-phone mr-2"></i> +1 (555) 123-4567<br>
+                        <i class="fas fa-map-marker-alt mr-2"></i> 123 Main St, City, Country
+                    </p>
+                    <div class="mt-4">
+                        <a href="#" class="btn-primary text-xs">
+                            <i class="fas fa-headset mr-1"></i> Contact Support
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-600">
+                &copy; {% now "Y" %} StockMate. All rights reserved.
+            </div>
+        </div>
+    </footer>
+    
+    <!-- JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenu.classList.toggle('hidden');
+        });
+        
+        // Message close buttons
+        document.querySelectorAll('.message-close').forEach(button => {
+            button.addEventListener('click', function() {
+                this.closest('div').remove();
+            });
+        });
+        
+        // Auto-hide messages after 5 seconds
+        setTimeout(function() {
+            document.querySelectorAll('.message-close').forEach(button => {
+                button.click();
+            });
+        }, 5000);
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

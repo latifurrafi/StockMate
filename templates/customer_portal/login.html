@@ -1,0 +1,53 @@
+{% extends 'customer_portal/base.html' %}
+
+{% block title %}Login - Customer Portal{% endblock %}
+
+{% block content %}
+<div class="flex justify-center">
+    <div class="w-full max-w-md">
+        <!-- Login Card -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="bg-blue-600 px-6 py-4">
+                <h2 class="text-xl font-bold text-white">Customer Portal Login</h2>
+            </div>
+            
+            <div class="p-6">
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    
+                    <div>
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" name="email" id="email" required 
+                               class="form-input" placeholder="customer@example.com">
+                    </div>
+                    
+                    <div>
+                        <label for="phone" class="form-label">Phone Number</label>
+                        <input type="tel" name="phone" id="phone" required 
+                               class="form-input" placeholder="Your registered phone number">
+                    </div>
+                    
+                    <div class="pt-2">
+                        <button type="submit" class="btn-primary w-full">
+                            <i class="fas fa-sign-in-alt mr-2"></i> Login
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Help Section -->
+            <div class="bg-gray-50 p-6 border-t border-gray-200">
+                <h3 class="text-md font-semibold mb-2">Need Help?</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    To access the customer portal, please enter the email address and phone number 
+                    associated with your account. If you haven't made a purchase before, please contact us.
+                </p>
+                <p class="text-sm">
+                    <i class="fas fa-phone text-blue-600 mr-2"></i>
+                    Customer Support: +1 (555) 123-4567
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

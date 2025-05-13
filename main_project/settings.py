@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'main_app',
+    'forecast',
+    'rest_framework',  # Make sure rest_framework is included
 ]
 
 MIDDLEWARE = [
