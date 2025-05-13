@@ -1998,13 +1998,17 @@ def customer_portal_checkout(request):
         # Update order total
         order.update_total()
         
-        # Convert to a regular Order for internal tracking
+        # Create internal order and link it to the portal order
         internal_order = Order.objects.create(
             customer=customer,
             status='pending',
             notes=f"Online order via customer portal. Shipping to: {shipping_address}",
             created_by=None  # No internal user created this
         )
+        
+        # Link the portal order with the internal order
+        order.internal_order = internal_order
+        order.save()
         
         # Copy items to internal order
         for item in order_items:
@@ -2075,7 +2079,7 @@ def customer_portal_orders(request):
     paginator = Paginator(orders, 10)
     page_number = request.GET.get('page')
     orders_page = paginator.get_page(page_number)
-    
+
     context = {
         'orders': orders_page,
     }
@@ -2086,6 +2090,30 @@ def customer_portal_orders(request):
 def customer_portal_order_detail(request, order_id):
     customer_id = request.session['customer_id']
     order = get_object_or_404(CustomerPortalOrder, id=order_id, customer_id=customer_id)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'cancel_order' and order.status in ['pending', 'processing']:
+            order.update_status('cancelled')
+            messages.success(request, 'Order has been cancelled successfully.')
+            return redirect('customer_portal_orders')
+        
+        if action == 'update_status' and request.user.is_staff:
+            new_status = request.POST.get('status')
+            if new_status:
+                try:
+                    order.update_status(new_status)
+                    messages.success(request, f'Order status updated to {order.get_status_display()}.')
+                except ValueError as e:
+                    messages.error(request, str(e))
+            
+            # If tracking number is provided, update it
+            tracking_number = request.POST.get('tracking_number')
+            if tracking_number:
+                order.tracking_number = tracking_number
+                order.save()
+                messages.success(request, 'Tracking number has been updated.')
     
     context = {
         'order': order,

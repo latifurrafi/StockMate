@@ -323,6 +323,7 @@ class CustomerPortalOrder(models.Model):
     ]
     
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='portal_orders')
+    internal_order = models.OneToOneField(Order, on_delete=models.SET_NULL, null=True, related_name='portal_order')
     order_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     shipping_address = models.TextField()
@@ -332,6 +333,8 @@ class CustomerPortalOrder(models.Model):
     payment_method = models.CharField(max_length=50, default='Credit Card')
     payment_status = models.CharField(max_length=20, default='pending')
     tracking_number = models.CharField(max_length=100, blank=True, null=True)
+    shipped_date = models.DateTimeField(null=True, blank=True)
+    delivery_date = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
         return f"Portal Order #{self.id} - {self.customer.name}"
@@ -344,8 +347,79 @@ class CustomerPortalOrder(models.Model):
         self.total_amount = sum(item.subtotal for item in self.items.all())
         self.save()
     
+    def update_status(self, new_status):
+        """
+        Update the order status and related timestamps
+        """
+        if new_status not in dict(self.STATUS_CHOICES):
+            raise ValueError(f"Invalid status: {new_status}")
+        
+        old_status = self.status
+        self.status = new_status
+        
+        # Update timestamps based on status
+        if new_status == 'shipped' and old_status != 'shipped':
+            self.shipped_date = timezone.now()
+        elif new_status == 'delivered' and old_status != 'delivered':
+            self.delivery_date = timezone.now()
+        
+        self.save()
+        
+        # If there's an internal order, update its status too
+        if self.internal_order:
+            # Map portal status to internal order status
+            internal_status_map = {
+                'pending': 'pending',
+                'processing': 'processing',
+                'shipped': 'processing',
+                'delivered': 'completed',
+                'cancelled': 'cancelled'
+            }
+            self.internal_order.status = internal_status_map[new_status]
+            self.internal_order.save()
+        
+        # Send notification to customer about status change
+        self.notify_status_change(old_status, new_status)
+    
+    def notify_status_change(self, old_status, new_status):
+        """
+        Send notification to customer about order status change
+        """
+        status_messages = {
+            'processing': 'Your order is now being processed.',
+            'shipped': f'Your order has been shipped.{f" Tracking number: {self.tracking_number}" if self.tracking_number else ""}',
+            'delivered': 'Your order has been delivered.',
+            'cancelled': 'Your order has been cancelled.'
+        }
+        
+        if new_status in status_messages:
+            # You can implement your notification logic here
+            # For example, sending email, SMS, or in-app notification
+            message = status_messages[new_status]
+            # Placeholder for notification logic
+            print(f"Notification to {self.customer.name}: {message}")
+    
     class Meta:
         ordering = ['-order_date']
+
+# Signal to sync order statuses
+@receiver(post_save, sender=Order)
+def sync_order_status(sender, instance, **kwargs):
+    try:
+        if hasattr(instance, 'portal_order'):
+            portal_order = instance.portal_order
+            # Map internal status to portal status
+            portal_status_map = {
+                'pending': 'pending',
+                'processing': 'processing',
+                'completed': 'delivered',
+                'cancelled': 'cancelled'
+            }
+            new_status = portal_status_map.get(instance.status)
+            if new_status and portal_order.status != new_status:
+                portal_order.update_status(new_status)
+    except CustomerPortalOrder.DoesNotExist:
+        pass
 
 class CustomerPortalOrderItem(models.Model):
     order = models.ForeignKey(CustomerPortalOrder, on_delete=models.CASCADE, related_name='items')
